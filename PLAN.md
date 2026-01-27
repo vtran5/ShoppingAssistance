@@ -791,6 +791,37 @@ export async function getAllItems(page = 1, limit = 50): Promise<{
 }
 ```
 
+#### 8. Add Headless Browser for Bot-Protected Sites
+**File:** `src/lib/scraper.ts`, `src/app/api/scrape/route.ts`
+
+**Problem:** Many e-commerce sites (Douglas, Amazon, etc.) use bot protection (Akamai, Cloudflare) that blocks server-side HTTP requests, returning 400/403 errors.
+
+**Current behavior:** Shows user-friendly error message suggesting manual entry.
+
+**Solution:** Use a headless browser (Puppeteer/Playwright) to bypass JavaScript-based bot protection:
+```typescript
+// Option A: Self-hosted Puppeteer (complex, resource-intensive)
+import puppeteer from 'puppeteer';
+
+async function scrapeWithBrowser(url: string) {
+  const browser = await puppeteer.launch();
+  const page = await browser.newPage();
+  await page.goto(url, { waitUntil: 'networkidle2' });
+  const html = await page.content();
+  await browser.close();
+  return html;
+}
+
+// Option B: Use a scraping service API (simpler, has costs)
+// - ScraperAPI, Browserless, Apify
+```
+
+**Considerations:**
+- Puppeteer requires Chromium binary (~400MB), increases Vercel deployment size
+- May need Vercel Pro or dedicated server for resource limits
+- Third-party scraping APIs have per-request costs
+- Could implement as fallback only when regular fetch fails with 400/403
+
 ---
 
 ### Low Priority
