@@ -641,6 +641,219 @@ Before moving to Phase 2, verify all Phase 1 requirements:
 2. Implement price checking
 3. Add notification system
 
+---
+
+## Future Improvements (from Code Review)
+
+Technical debt and improvements identified during PR #1 review. Address these in future iterations.
+
+### High Priority
+
+#### 1. Fix Race Condition in Google Sheets Initialization
+**File:** `src/lib/sheets.ts:120-125`
+
+**Problem:** If multiple requests arrive simultaneously, `initializeSheets()` could run multiple times before `initialized` is set to `true`.
+
+```typescript
+// Current (problematic)
+let initialized = false;
+async function ensureInitialized(): Promise<void> {
+  if (!initialized) {
+    await initializeSheets();
+    initialized = true;
+  }
+}
+```
+
+**Solution:** Use a promise-based singleton pattern:
+```typescript
+let initPromise: Promise<void> | null = null;
+
+async function ensureInitialized(): Promise<void> {
+  if (!initPromise) {
+    initPromise = initializeSheets();
+  }
+  return initPromise;
+}
+```
+
+#### 2. Add Rate Limiting to Scraper
+**File:** `src/app/api/scrape/route.ts`
+
+**Problem:** No rate limiting on scraper endpoint could lead to:
+- Being blocked by target sites
+- Potential abuse if exposed publicly
+
+**Solution:**
+- Implement request throttling (e.g., max 10 requests per minute)
+- Consider using a queue for scraping requests
+- Add caching for recently scraped URLs
+
+#### 3. SSRF Protection for Scraper
+**File:** `src/lib/scraper.ts`
+
+**Problem:** The scraper fetches arbitrary URLs from user input.
+
+**Solution:**
+- Validate URLs against allowlisted domains (optional)
+- Block internal/private IP ranges
+- Consider using a proxy service for scraping
+
+---
+
+### Medium Priority
+
+#### 4. Optimize `getItemById()` Query
+**File:** `src/lib/sheets.ts:183-187`
+
+**Problem:** Currently fetches ALL items just to find one by ID.
+
+```typescript
+// Current (inefficient)
+export async function getItemById(id: string): Promise<WishlistItem | null> {
+  const items = await getAllItems();
+  return items.find((item) => item.id === id) || null;
+}
+```
+
+**Solution:** Query only the ID column first, then fetch the specific row:
+```typescript
+export async function getItemById(id: string): Promise<WishlistItem | null> {
+  const sheets = getClient();
+  const response = await sheets.spreadsheets.values.get({
+    spreadsheetId: SPREADSHEET_ID,
+    range: `${WISHLIST_SHEET}!A:A`,
+  });
+
+  const rowIndex = response.data.values?.findIndex(row => row[0] === id);
+  if (rowIndex === -1 || rowIndex === undefined) return null;
+
+  // Fetch only that row
+  const rowData = await sheets.spreadsheets.values.get({
+    spreadsheetId: SPREADSHEET_ID,
+    range: `${WISHLIST_SHEET}!A${rowIndex + 1}:M${rowIndex + 1}`,
+  });
+
+  return rowData.data.values ? rowToItem(rowData.data.values[0]) : null;
+}
+```
+
+#### 5. Add Optimistic UI Updates
+**File:** `src/app/(main)/wishlist/page.tsx`
+
+**Problem:** UI waits for API response before updating, causing perceived slowness.
+
+**Solution:** Update UI immediately, rollback on error:
+```typescript
+const handleAddItem = async (item: CreateItemRequest) => {
+  // Optimistic update
+  const tempId = `temp-${Date.now()}`;
+  const optimisticItem = { ...item, id: tempId } as WishlistItem;
+  setItems(prev => [optimisticItem, ...prev]);
+
+  try {
+    const response = await fetch('/api/items', { ... });
+    const data = await response.json();
+    // Replace temp item with real item
+    setItems(prev => prev.map(i => i.id === tempId ? data.item : i));
+  } catch {
+    // Rollback on error
+    setItems(prev => prev.filter(i => i.id !== tempId));
+    // Show error toast
+  }
+};
+```
+
+#### 6. Validate Image Size for URL Images
+**File:** `src/components/wishlist/AddItemModal.tsx`
+
+**Problem:** 35KB limit enforced for pasted images but not for URL images. Large base64 strings could exceed Google Sheets cell limits (50,000 characters).
+
+**Solution:**
+- For URL images: store URL only (current behavior is fine)
+- For base64 images: compress/resize before storing
+- Add server-side validation in POST /api/items
+
+#### 7. Add Pagination for Large Wishlists
+**File:** `src/lib/sheets.ts`, `src/app/api/items/route.ts`
+
+**Problem:** `getAllItems()` returns everything, which may become slow with many items.
+
+**Solution:** Add pagination support:
+```typescript
+// API: GET /api/items?page=1&limit=20
+export async function getAllItems(page = 1, limit = 50): Promise<{
+  items: WishlistItem[];
+  total: number;
+  hasMore: boolean;
+}> {
+  // Implementation with range calculation
+}
+```
+
+---
+
+### Low Priority
+
+#### 8. Replace console.error with Proper Logging
+**Files:** Multiple API routes
+
+**Problem:** `console.error()` used in production code.
+
+**Solution:**
+- Use a logging library (e.g., pino, winston)
+- Configure log levels for dev vs production
+- Consider error tracking service (e.g., Sentry)
+
+#### 9. Make Currency List Configurable
+**File:** `src/components/ui/CurrencySelect.tsx`
+
+**Problem:** Hardcoded currency list.
+
+**Solution:** Move to a config file or fetch from settings.
+
+#### 10. Reconsider `userScalable: false`
+**File:** `src/app/layout.tsx:21`
+
+**Problem:** Disabling user scaling is an accessibility issue for users who need to zoom.
+
+**Solution:** Remove or set to `true`:
+```typescript
+export const viewport: Viewport = {
+  // ...
+  userScalable: true, // Allow accessibility zoom
+};
+```
+
+---
+
+### Test Coverage (Missing)
+
+No tests were included in Phase 1. Add tests in a future iteration:
+
+#### Unit Tests
+- [ ] `src/lib/sheets.ts` - CRUD operations (mock Google API)
+- [ ] `src/lib/scraper.ts` - Price parsing, currency detection
+- [ ] `src/lib/currency.ts` - Formatting functions
+
+#### Integration Tests
+- [ ] API routes - Test all endpoints with mock data
+- [ ] Error handling - Test 400, 404, 500 responses
+
+#### Component Tests
+- [ ] `AddItemModal` - Form validation, submission
+- [ ] `EditItemModal` - Pre-fill, save, delete
+- [ ] `WishlistGrid` - Empty state, item display
+- [ ] `FilterPanel` - Filter application
+
+#### E2E Tests (Optional)
+- [ ] Add item flow (manual)
+- [ ] Add item flow (URL scrape)
+- [ ] Edit and delete item
+- [ ] Sort and filter
+
+---
+
 ## Scraping Strategy
 1. Parse URL → identify retailer
 2. Try structured data (JSON-LD schema.org/Product)
