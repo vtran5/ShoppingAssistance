@@ -224,6 +224,8 @@ export async function scrapeProduct(url: string): Promise<ScrapedProduct> {
     });
 
     if (!response.ok) {
+      // 400/403 often means bot protection (Akamai, Cloudflare, etc.)
+      const isBlocked = response.status === 400 || response.status === 403;
       return {
         name: '',
         currentPrice: null,
@@ -231,7 +233,9 @@ export async function scrapeProduct(url: string): Promise<ScrapedProduct> {
         currency: 'USD',
         imageUrl: null,
         success: false,
-        error: `Failed to fetch page: ${response.status}`,
+        error: isBlocked
+          ? 'This site blocks automated requests. Please enter details manually.'
+          : `Failed to fetch page: ${response.status}`,
       };
     }
 
