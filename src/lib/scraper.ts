@@ -144,7 +144,7 @@ function extractGenericPrice(html: string): { price: number | null; currency: Cu
   ];
 
   for (const pattern of pricePatterns) {
-    const matches = html.matchAll(pattern);
+    const matches = Array.from(html.matchAll(pattern));
     for (const match of matches) {
       const priceText = match[0];
       const price = parsePrice(priceText);
