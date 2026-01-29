@@ -1009,18 +1009,44 @@ Or: Tap anywhere on card → Opens Edit Modal
 ### Storage Format
 - **Scraped items**: Store image URL string (e.g., `https://images.amazon.com/...`)
 - **Manual items**: User can either:
-  - Paste an image directly → stored as base64 data URI (`data:image/png;base64,...`)
+  - Paste an image directly → automatically resized and stored as JPEG base64 data URI
   - Enter an image URL → stored as URL string
+
+### Image Resizing (Pasted Images)
+Pasted images are automatically processed client-side before storage:
+
+| Setting | Value |
+|---------|-------|
+| **Max dimensions** | 320×200px (fit within, preserve aspect ratio) |
+| **Output format** | JPEG at 80% quality |
+| **Letterbox background** | Gray (`#f3f4f6` / Tailwind gray-100) |
+| **Typical output size** | 15-25KB |
+
+```typescript
+// lib/imageUtils.ts
+
+import { resizeImage } from '@/lib/imageUtils';
+
+// Resizes image to fit within 320x200, converts to JPEG
+const resizedBase64 = await resizeImage(file);
+```
+
+### Display Behavior
+- **Display mode**: `object-contain` (shows full image, no cropping)
+- **Display height**: 200px (unified across mobile and desktop)
+- **Letterbox**: Gray background fills empty space for non-matching aspect ratios
+- **Lazy loading**: Native `loading="lazy"` for performance
 
 ### Detection Logic
 ```typescript
+// lib/imageUtils.ts
+
 function isBase64Image(data: string): boolean {
   return data.startsWith('data:image/');
 }
 
-function getImageSrc(imageData: string | null): string {
-  if (!imageData) return '/placeholder-image.svg';
-  return imageData; // Works for both URL and base64
+function isImageUrl(data: string): boolean {
+  return !isBase64Image(data) && (data.startsWith('http://') || data.startsWith('https://'));
 }
 ```
 
@@ -1033,19 +1059,22 @@ function ItemImage({ src, alt }: { src: string | null; alt: string }) {
 
   if (!src || error) {
     return (
-      <div className="w-full h-48 bg-gray-100 flex items-center justify-center">
+      <div className="w-full h-[200px] bg-gray-100 flex items-center justify-center">
         <ImageIcon className="w-12 h-12 text-gray-400" />
       </div>
     );
   }
 
   return (
-    <img
-      src={src}
-      alt={alt}
-      className="w-full h-48 object-cover"
-      onError={() => setError(true)}
-    />
+    <div className="bg-gray-100 w-full h-[200px]">
+      <img
+        src={src}
+        alt={alt}
+        loading="lazy"
+        className="w-full h-full object-contain"
+        onError={() => setError(true)}
+      />
+    </div>
   );
 }
 ```
@@ -1054,7 +1083,7 @@ function ItemImage({ src, alt }: { src: string | null; alt: string }) {
 ```tsx
 // Handle paste event in Add/Edit modal
 
-function handlePaste(e: ClipboardEvent) {
+async function handlePaste(e: ClipboardEvent) {
   const items = e.clipboardData?.items;
   if (!items) return;
 
@@ -1062,12 +1091,9 @@ function handlePaste(e: ClipboardEvent) {
     if (item.type.startsWith('image/')) {
       const file = item.getAsFile();
       if (file) {
-        const reader = new FileReader();
-        reader.onload = (event) => {
-          const base64 = event.target?.result as string;
-          setImageData(base64); // Store base64 string
-        };
-        reader.readAsDataURL(file);
+        // Resize to 320x200, convert to JPEG at 80% quality
+        const resizedBase64 = await resizeImage(file);
+        setImageData(resizedBase64);
       }
       break;
     }
@@ -1076,7 +1102,8 @@ function handlePaste(e: ClipboardEvent) {
 ```
 
 ### Size Considerations
-- Base64 images are ~33% larger than binary
-- Google Sheets cell limit: 50,000 characters
-- Recommendation: Compress/resize images before storing
-- Max image size: ~35KB original → ~47KB base64 (fits in cell)
+- Pasted images are automatically resized to fit within 320×200px
+- Output is JPEG at 80% quality (~15-25KB typical)
+- Base64 encoding adds ~33% overhead
+- Final size typically ~20-35KB base64 (well under Google Sheets 50K char limit)
+- **No manual size limit needed** - resizing handles this automatically

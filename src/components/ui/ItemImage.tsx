@@ -35,11 +35,14 @@ export function ItemImage({ src, alt, className = '' }: ItemImageProps) {
   }
 
   return (
-    <img
-      src={src}
-      alt={alt}
-      className={`object-cover ${className}`}
-      onError={() => setError(true)}
-    />
+    <div className={`bg-gray-100 ${className}`}>
+      <img
+        src={src}
+        alt={alt}
+        loading="lazy"
+        className="w-full h-full object-contain"
+        onError={() => setError(true)}
+      />
+    </div>
   );
 }

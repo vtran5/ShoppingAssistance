@@ -31,7 +31,7 @@ export function WishlistItem({ item, onClick }: WishlistItemProps) {
         <ItemImage
           src={item.imageData}
           alt={item.name}
-          className="w-full h-40 sm:h-48"
+          className="w-full h-[200px]"
         />
         {item.isPurchased && (
           <div className="absolute top-2 right-2 bg-green-500 text-white px-2 py-1 rounded-full text-xs font-medium flex items-center gap-1">
