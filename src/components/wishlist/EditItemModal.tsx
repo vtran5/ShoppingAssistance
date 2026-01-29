@@ -8,6 +8,7 @@ import { StarRating } from '@/components/ui/StarRating';
 import { CurrencySelect } from '@/components/ui/CurrencySelect';
 import { ItemImage } from '@/components/ui/ItemImage';
 import { WishlistItem, UpdateItemRequest, Priority, Currency } from '@/types';
+import { resizeImage } from '@/lib/imageUtils';
 
 interface EditItemModalProps {
   item: WishlistItem | null;
@@ -60,7 +61,7 @@ export function EditItemModal({
     onClose();
   }, [onClose]);
 
-  const handlePaste = useCallback((e: React.ClipboardEvent) => {
+  const handlePaste = useCallback(async (e: React.ClipboardEvent) => {
     const items = e.clipboardData?.items;
     if (!items) return;
 
@@ -68,25 +69,20 @@ export function EditItemModal({
       if (clipboardItem.type.startsWith('image/')) {
         const file = clipboardItem.getAsFile();
         if (file) {
-          if (file.size > 35 * 1024) {
-            setErrors((prev) => ({
-              ...prev,
-              image: 'Image too large. Please use an image under 35KB.',
-            }));
-            return;
-          }
-
-          const reader = new FileReader();
-          reader.onload = (event) => {
-            const base64 = event.target?.result as string;
-            setImageData(base64);
+          try {
+            const resizedBase64 = await resizeImage(file);
+            setImageData(resizedBase64);
             setImageUrl('');
             setErrors((prev) => {
               const { image, ...rest } = prev;
               return rest;
             });
-          };
-          reader.readAsDataURL(file);
+          } catch {
+            setErrors((prev) => ({
+              ...prev,
+              image: 'Failed to process image. Please try again.',
+            }));
+          }
         }
         break;
       }
