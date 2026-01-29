@@ -9,12 +9,6 @@ const MAX_HEIGHT = 200;
 const JPEG_QUALITY = 0.8;
 const BACKGROUND_COLOR = '#f3f4f6'; // Tailwind gray-100
 
-export interface ResizeResult {
-  base64: string;
-  width: number;
-  height: number;
-}
-
 /**
  * Resizes an image file to fit within the target dimensions
  * @param file - The image file to resize
@@ -52,7 +46,8 @@ export function resizeImage(file: File): Promise<string> {
         ctx.fillRect(0, 0, MAX_WIDTH, MAX_HEIGHT);
 
         // Calculate scaled dimensions to fit within bounds while preserving aspect ratio
-        const scale = Math.min(MAX_WIDTH / img.width, MAX_HEIGHT / img.height);
+        // Cap at 1 to prevent upscaling small images
+        const scale = Math.min(1, MAX_WIDTH / img.width, MAX_HEIGHT / img.height);
         const scaledWidth = img.width * scale;
         const scaledHeight = img.height * scale;
 
