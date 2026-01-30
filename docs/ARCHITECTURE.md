@@ -138,8 +138,8 @@ interface WishlistItem {
   originalPrice: number | null;  // MSRP/retail price (optional)
   currency: Currency;            // Original currency (USD, EUR, etc.)
 
-  // Converted price (for sorting/budget)
-  priceInBaseCurrency: number;   // Converted to user's base currency
+  // Converted price (for sorting/budget) - calculated via GOOGLEFINANCE in Google Sheets
+  priceInBaseCurrency: number | null;  // Converted to user's base currency (null if formula not yet calculated)
 
   imageData: string | null;       // Image URL or base64 data (for pasted images)
   priority: 1 | 2 | 3 | 4 | 5;   // 1=low, 5=high
@@ -196,6 +196,20 @@ interface UserSettings {
 | K: Notes | string | User notes |
 | L: CreatedAt | string | ISO timestamp |
 | M: LastChecked | string | ISO timestamp (empty for manual items) |
+| N: PriceInBaseCurrency | number | **Calculated via formula** - see below |
+
+**Currency Conversion Formula (Column N)**
+
+Column N contains a GOOGLEFINANCE formula that automatically converts prices to the user's base currency:
+
+```
+=IF(G{row}=Settings!$B$2, D{row}, D{row}*GOOGLEFINANCE("CURRENCY:"&G{row}&Settings!$B$2))
+```
+
+- If item currency (G) equals base currency (Settings!$B$2), returns the current price (D)
+- Otherwise, converts using live exchange rates from Google Finance
+- Formula is automatically inserted when items are added via the API
+- Exchange rates update automatically when the sheet is accessed
 
 **Sheet: `Settings`**
 

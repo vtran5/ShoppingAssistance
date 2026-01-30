@@ -1,14 +1,15 @@
 'use client';
 
-import { WishlistItem as WishlistItemType } from '@/types';
+import { WishlistItem as WishlistItemType, Currency } from '@/types';
 import { WishlistItem } from './WishlistItem';
 
 interface WishlistGridProps {
   items: WishlistItemType[];
   onItemClick: (item: WishlistItemType) => void;
+  baseCurrency?: Currency;
 }
 
-export function WishlistGrid({ items, onItemClick }: WishlistGridProps) {
+export function WishlistGrid({ items, onItemClick, baseCurrency }: WishlistGridProps) {
   if (items.length === 0) {
     return (
       <div className="flex flex-col items-center justify-center py-12 px-4 text-center">
@@ -41,6 +42,7 @@ export function WishlistGrid({ items, onItemClick }: WishlistGridProps) {
           key={item.id}
           item={item}
           onClick={() => onItemClick(item)}
+          baseCurrency={baseCurrency}
         />
       ))}
     </div>
