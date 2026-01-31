@@ -1,15 +1,22 @@
 'use client';
 
-import { WishlistItem as WishlistItemType, Currency } from '@/types';
+import { WishlistItem as WishlistItemType, Currency, ItemViewSize } from '@/types';
 import { WishlistItem } from './WishlistItem';
 
 interface WishlistGridProps {
   items: WishlistItemType[];
   onItemClick: (item: WishlistItemType) => void;
   baseCurrency?: Currency;
+  viewSize?: ItemViewSize;
 }
 
-export function WishlistGrid({ items, onItemClick, baseCurrency }: WishlistGridProps) {
+export function WishlistGrid({ items, onItemClick, baseCurrency, viewSize = 'large' }: WishlistGridProps) {
+  // Grid classes based on view size
+  const gridClasses = {
+    large: 'grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4',
+    medium: 'grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 gap-3',
+    small: 'grid-cols-4 sm:grid-cols-5 lg:grid-cols-6 gap-2',
+  }[viewSize];
   if (items.length === 0) {
     return (
       <div className="flex flex-col items-center justify-center py-12 px-4 text-center">
@@ -36,13 +43,14 @@ export function WishlistGrid({ items, onItemClick, baseCurrency }: WishlistGridP
   }
 
   return (
-    <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
+    <div className={`grid ${gridClasses}`}>
       {items.map((item) => (
         <WishlistItem
           key={item.id}
           item={item}
           onClick={() => onItemClick(item)}
           baseCurrency={baseCurrency}
+          viewSize={viewSize}
         />
       ))}
     </div>

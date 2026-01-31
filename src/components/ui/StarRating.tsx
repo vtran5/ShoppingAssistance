@@ -6,7 +6,7 @@ interface StarRatingProps {
   value: Priority;
   onChange?: (value: Priority) => void;
   readonly?: boolean;
-  size?: 'sm' | 'md' | 'lg';
+  size?: 'xs' | 'sm' | 'md' | 'lg';
 }
 
 export function StarRating({
@@ -16,12 +16,14 @@ export function StarRating({
   size = 'md',
 }: StarRatingProps) {
   const sizeClasses = {
+    xs: 'w-3 h-3',
     sm: 'w-4 h-4',
     md: 'w-5 h-5',
     lg: 'w-6 h-6',
   };
 
   const containerClasses = {
+    xs: 'gap-0',
     sm: 'gap-0.5',
     md: 'gap-1',
     lg: 'gap-1.5',

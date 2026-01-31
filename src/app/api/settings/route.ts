@@ -18,13 +18,25 @@ export async function PUT(request: Request) {
   try {
     const body: UpdateSettingsRequest = await request.json();
 
-    // Validate baseCurrency
-    if (!body.baseCurrency || body.baseCurrency.trim() === '') {
-      return NextResponse.json({ error: 'Base currency is required' }, { status: 400 });
+    // Validate at least one setting is provided
+    if (!body.baseCurrency && !body.itemViewSize) {
+      return NextResponse.json({ error: 'At least one setting is required' }, { status: 400 });
+    }
+
+    // Validate baseCurrency if provided
+    if (body.baseCurrency !== undefined && body.baseCurrency.trim() === '') {
+      return NextResponse.json({ error: 'Base currency cannot be empty' }, { status: 400 });
+    }
+
+    // Validate itemViewSize if provided
+    const validViewSizes = ['large', 'medium', 'small'];
+    if (body.itemViewSize !== undefined && !validViewSizes.includes(body.itemViewSize)) {
+      return NextResponse.json({ error: 'Invalid item view size' }, { status: 400 });
     }
 
     const updatedSettings = await updateSettings({
-      baseCurrency: body.baseCurrency.toUpperCase(),
+      ...(body.baseCurrency && { baseCurrency: body.baseCurrency.toUpperCase() }),
+      ...(body.itemViewSize && { itemViewSize: body.itemViewSize }),
     });
 
     return NextResponse.json(updatedSettings);

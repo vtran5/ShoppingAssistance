@@ -1,5 +1,5 @@
 import { google, sheets_v4 } from 'googleapis';
-import { WishlistItem, UserSettings, Currency, Priority } from '@/types';
+import { WishlistItem, UserSettings, Currency, Priority, ItemViewSize } from '@/types';
 
 const SPREADSHEET_ID = process.env.GOOGLE_SPREADSHEET_ID;
 const WISHLIST_SHEET = 'Wishlist';
@@ -349,12 +349,16 @@ export async function getSettings(): Promise<UserSettings> {
 
   const settings: UserSettings = {
     baseCurrency: 'USD',
+    itemViewSize: 'large',
   };
 
   if (response.data.values) {
     for (const row of response.data.values) {
       if (row[0] === 'baseCurrency' && row[1]) {
         settings.baseCurrency = row[1] as Currency;
+      }
+      if (row[0] === 'itemViewSize' && row[1]) {
+        settings.itemViewSize = row[1] as ItemViewSize;
       }
     }
   }
@@ -394,6 +398,35 @@ export async function updateSettings(settings: Partial<UserSettings>): Promise<U
         range: `${SETTINGS_SHEET}!B${rowIndex + 1}`,
         valueInputOption: 'RAW',
         requestBody: { values: [[settings.baseCurrency]] },
+      });
+    }
+  }
+
+  // Find and update itemViewSize row
+  if (settings.itemViewSize !== undefined) {
+    // Re-fetch rows in case baseCurrency was just added
+    const refreshedResponse = await sheets.spreadsheets.values.get({
+      spreadsheetId: SPREADSHEET_ID,
+      range: `${SETTINGS_SHEET}!A:B`,
+    });
+    const refreshedRows = refreshedResponse.data.values ?? [];
+    const rowIndex = refreshedRows.findIndex((row) => row[0] === 'itemViewSize');
+
+    if (rowIndex === -1) {
+      // Add new setting
+      await sheets.spreadsheets.values.append({
+        spreadsheetId: SPREADSHEET_ID,
+        range: `${SETTINGS_SHEET}!A:B`,
+        valueInputOption: 'RAW',
+        requestBody: { values: [['itemViewSize', settings.itemViewSize]] },
+      });
+    } else {
+      // Update existing setting
+      await sheets.spreadsheets.values.update({
+        spreadsheetId: SPREADSHEET_ID,
+        range: `${SETTINGS_SHEET}!B${rowIndex + 1}`,
+        valueInputOption: 'RAW',
+        requestBody: { values: [[settings.itemViewSize]] },
       });
     }
   }

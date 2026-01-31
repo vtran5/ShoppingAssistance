@@ -4,6 +4,9 @@ export type Currency = 'USD' | 'EUR' | 'GBP' | 'JPY' | 'AUD' | 'CAD' | 'VND' | s
 // Priority rating 1-5
 export type Priority = 1 | 2 | 3 | 4 | 5;
 
+// Item view size for mobile grid layout
+export type ItemViewSize = 'large' | 'medium' | 'small';
+
 // Wishlist item - main data model
 export interface WishlistItem {
   id: string;
@@ -25,6 +28,7 @@ export interface WishlistItem {
 // User settings
 export interface UserSettings {
   baseCurrency: Currency;
+  itemViewSize: ItemViewSize;
 }
 
 // API Response types
@@ -47,6 +51,7 @@ export interface SuccessResponse {
 
 export interface SettingsResponse {
   baseCurrency: Currency;
+  itemViewSize: ItemViewSize;
 }
 
 // API Request types
@@ -73,7 +78,8 @@ export interface UpdateItemRequest {
 }
 
 export interface UpdateSettingsRequest {
-  baseCurrency: Currency;
+  baseCurrency?: Currency;
+  itemViewSize?: ItemViewSize;
 }
 
 // Sort and Filter types
