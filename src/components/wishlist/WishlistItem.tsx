@@ -1,6 +1,6 @@
 'use client';
 
-import { WishlistItem as WishlistItemType, Currency } from '@/types';
+import { WishlistItem as WishlistItemType, Currency, ItemViewSize } from '@/types';
 import { ItemImage } from '@/components/ui/ItemImage';
 import { StarRating } from '@/components/ui/StarRating';
 import { formatPrice } from '@/lib/currency';
@@ -9,17 +9,83 @@ interface WishlistItemProps {
   item: WishlistItemType;
   onClick: () => void;
   baseCurrency?: Currency;
+  viewSize?: ItemViewSize;
 }
 
-export function WishlistItem({ item, onClick, baseCurrency }: WishlistItemProps) {
+export function WishlistItem({ item, onClick, baseCurrency, viewSize = 'large' }: WishlistItemProps) {
   const priceChange = item.currentPrice - item.priceWhenAdded;
   const priceChangePercent = item.priceWhenAdded
     ? ((priceChange / item.priceWhenAdded) * 100).toFixed(0)
     : 0;
 
-  // Show converted price if item currency differs from base currency
+  // Show converted price if item currency differs from base currency (only in large view)
   const showConvertedPrice =
+    viewSize === 'large' &&
     baseCurrency && item.currency !== baseCurrency && item.priceInBaseCurrency !== null;
+
+  // Size-specific styles
+  const imageHeight = {
+    large: 'h-[200px]',
+    medium: 'h-[120px]',
+    small: 'h-[80px]',
+  }[viewSize];
+
+  const contentPadding = {
+    large: 'p-3 space-y-2',
+    medium: 'p-2 space-y-1',
+    small: 'p-1.5 space-y-1',
+  }[viewSize];
+
+  const nameClasses = {
+    large: 'font-medium text-gray-900 line-clamp-2',
+    medium: 'font-medium text-gray-900 text-sm line-clamp-1',
+    small: 'font-medium text-gray-900 text-xs line-clamp-1',
+  }[viewSize];
+
+  const priceClasses = {
+    large: 'text-lg font-bold text-gray-900',
+    medium: 'text-sm font-bold text-gray-900',
+    small: 'text-xs font-bold text-gray-900',
+  }[viewSize];
+
+  const linkButtonClasses = {
+    large: 'top-2 left-2 p-2',
+    medium: 'top-1 left-1 p-1.5',
+    small: 'top-1 left-1 p-1',
+  }[viewSize];
+
+  const linkIconClasses = {
+    large: 'h-4 w-4',
+    medium: 'h-3 w-3',
+    small: 'h-3 w-3',
+  }[viewSize];
+
+  const starSize = {
+    large: 'sm' as const,
+    medium: 'xs' as const,
+    small: 'xs' as const,
+  }[viewSize];
+
+  const purchasedBadgeClasses = {
+    large: 'top-2 right-2 px-2 py-1 text-xs',
+    medium: 'top-1 right-1 px-1.5 py-0.5 text-[10px]',
+    small: 'top-1 right-1 p-1',
+  }[viewSize];
+
+  const CheckIcon = () => (
+    <svg
+      xmlns="http://www.w3.org/2000/svg"
+      className="h-3 w-3"
+      viewBox="0 0 20 20"
+      fill="currentColor"
+    >
+      <path
+        fillRule="evenodd"
+        d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z"
+        clipRule="evenodd"
+      />
+    </svg>
+  );
 
   return (
     <button
@@ -36,26 +102,15 @@ export function WishlistItem({ item, onClick, baseCurrency }: WishlistItemProps)
         <ItemImage
           src={item.imageData}
           alt={item.name}
-          className="w-full h-[200px]"
+          className={`w-full ${imageHeight}`}
         />
         {item.isPurchased && (
-          <div className="absolute top-2 right-2 bg-green-500 text-white px-2 py-1 rounded-full text-xs font-medium flex items-center gap-1">
-            <svg
-              xmlns="http://www.w3.org/2000/svg"
-              className="h-3 w-3"
-              viewBox="0 0 20 20"
-              fill="currentColor"
-            >
-              <path
-                fillRule="evenodd"
-                d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z"
-                clipRule="evenodd"
-              />
-            </svg>
-            Purchased
+          <div className={`absolute ${purchasedBadgeClasses} bg-green-500 text-white rounded-full font-medium flex items-center gap-1`}>
+            <CheckIcon />
+            {viewSize !== 'small' && 'Purchased'}
           </div>
         )}
-        {!item.url && (
+        {!item.url && viewSize === 'large' && (
           <div className="absolute top-2 left-2 bg-gray-700 text-white px-2 py-1 rounded-full text-xs font-medium">
             Manual
           </div>
@@ -66,12 +121,12 @@ export function WishlistItem({ item, onClick, baseCurrency }: WishlistItemProps)
             target="_blank"
             rel="noopener noreferrer"
             onClick={(e) => e.stopPropagation()}
-            className="absolute top-2 left-2 bg-blue-600 text-white p-2 rounded-full hover:bg-blue-700 transition-colors"
+            className={`absolute ${linkButtonClasses} bg-blue-600 text-white rounded-full hover:bg-blue-700 transition-colors`}
             aria-label="Open product page"
           >
             <svg
               xmlns="http://www.w3.org/2000/svg"
-              className="h-4 w-4"
+              className={linkIconClasses}
               fill="none"
               viewBox="0 0 24 24"
               stroke="currentColor"
@@ -88,13 +143,13 @@ export function WishlistItem({ item, onClick, baseCurrency }: WishlistItemProps)
       </div>
 
       {/* Content */}
-      <div className="p-3 space-y-2">
+      <div className={contentPadding}>
         {/* Name */}
-        <h3 className="font-medium text-gray-900 line-clamp-2">{item.name}</h3>
+        <h3 className={nameClasses}>{item.name}</h3>
 
         {/* Price */}
-        <div className="flex items-baseline gap-2 flex-wrap">
-          <span className="text-lg font-bold text-gray-900">
+        <div className={`flex items-baseline ${viewSize === 'small' ? 'gap-1' : 'gap-2'} flex-wrap`}>
+          <span className={priceClasses}>
             {formatPrice(item.currentPrice, item.currency)}
           </span>
           {showConvertedPrice && (
@@ -102,15 +157,15 @@ export function WishlistItem({ item, onClick, baseCurrency }: WishlistItemProps)
               ({formatPrice(item.priceInBaseCurrency!, baseCurrency!)})
             </span>
           )}
-          {item.originalPrice && item.originalPrice > item.currentPrice && (
+          {viewSize === 'large' && item.originalPrice && item.originalPrice > item.currentPrice && (
             <span className="text-sm text-gray-500 line-through">
               {formatPrice(item.originalPrice, item.currency)}
             </span>
           )}
         </div>
 
-        {/* Price change indicator */}
-        {item.priceWhenAdded !== item.currentPrice && (
+        {/* Price change indicator - only in large view */}
+        {viewSize === 'large' && item.priceWhenAdded !== item.currentPrice && (
           <div className="text-xs">
             <span className="text-gray-500">
               Added: {formatPrice(item.priceWhenAdded, item.currency)}
@@ -127,11 +182,11 @@ export function WishlistItem({ item, onClick, baseCurrency }: WishlistItemProps)
 
         {/* Priority */}
         <div className="flex items-center justify-between">
-          <StarRating value={item.priority} readonly size="sm" />
+          <StarRating value={item.priority} readonly size={starSize} />
         </div>
 
-        {/* Notes preview */}
-        {item.notes && (
+        {/* Notes preview - only in large view */}
+        {viewSize === 'large' && item.notes && (
           <p className="text-xs text-gray-500 line-clamp-1">{item.notes}</p>
         )}
       </div>
