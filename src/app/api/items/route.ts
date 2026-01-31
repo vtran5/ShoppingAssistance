@@ -48,6 +48,7 @@ export async function POST(request: Request) {
       notes: body.notes || '',
       createdAt: now,
       lastChecked: body.url ? now : null,
+      priceInBaseCurrency: null, // Calculated by GOOGLEFINANCE formula in Google Sheets
     };
 
     await addItem(newItem);

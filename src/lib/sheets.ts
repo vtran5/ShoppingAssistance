@@ -19,6 +19,7 @@ const WISHLIST_HEADERS = [
   'Notes',
   'CreatedAt',
   'LastChecked',
+  'PriceInBaseCurrency',
 ];
 
 const SETTINGS_HEADERS = ['Key', 'Value'];
@@ -81,15 +82,23 @@ async function initializeSheets(): Promise<void> {
   // Check and add headers for Wishlist
   const wishlistData = await sheets.spreadsheets.values.get({
     spreadsheetId: SPREADSHEET_ID,
-    range: `${WISHLIST_SHEET}!A1:M1`,
+    range: `${WISHLIST_SHEET}!A1:N1`,
   });
 
   if (!wishlistData.data.values || wishlistData.data.values.length === 0) {
     await sheets.spreadsheets.values.update({
       spreadsheetId: SPREADSHEET_ID,
-      range: `${WISHLIST_SHEET}!A1:M1`,
+      range: `${WISHLIST_SHEET}!A1:N1`,
       valueInputOption: 'RAW',
       requestBody: { values: [WISHLIST_HEADERS] },
+    });
+  } else if (wishlistData.data.values[0].length < WISHLIST_HEADERS.length) {
+    // Add missing PriceInBaseCurrency header if sheet exists but column is missing
+    await sheets.spreadsheets.values.update({
+      spreadsheetId: SPREADSHEET_ID,
+      range: `${WISHLIST_SHEET}!N1`,
+      valueInputOption: 'RAW',
+      requestBody: { values: [['PriceInBaseCurrency']] },
     });
   }
 
@@ -140,6 +149,7 @@ function rowToItem(row: string[]): WishlistItem {
     notes: row[10] || '',
     createdAt: row[11] || new Date().toISOString(),
     lastChecked: row[12] || null,
+    priceInBaseCurrency: row[13] ? parseFloat(row[13]) : null,
   };
 }
 
@@ -169,7 +179,8 @@ export async function getAllItems(): Promise<WishlistItem[]> {
 
   const response = await sheets.spreadsheets.values.get({
     spreadsheetId: SPREADSHEET_ID,
-    range: `${WISHLIST_SHEET}!A2:M`,
+    range: `${WISHLIST_SHEET}!A2:N`,
+    valueRenderOption: 'FORMATTED_VALUE', // Get calculated values from formulas
   });
 
   if (!response.data.values || response.data.values.length === 0) {
@@ -191,7 +202,8 @@ export async function addItem(item: WishlistItem): Promise<void> {
   await ensureInitialized();
   const sheets = getClient();
 
-  await sheets.spreadsheets.values.append({
+  // Append item data to columns A-M
+  const appendResponse = await sheets.spreadsheets.values.append({
     spreadsheetId: SPREADSHEET_ID,
     range: `${WISHLIST_SHEET}!A:M`,
     valueInputOption: 'USER_ENTERED',
@@ -199,6 +211,27 @@ export async function addItem(item: WishlistItem): Promise<void> {
       values: [itemToRow(item)],
     },
   });
+
+  // Extract the row number from the updated range (e.g., "Wishlist!A5:M5" -> 5)
+  const updatedRange = appendResponse.data.updates?.updatedRange;
+  if (updatedRange) {
+    const rowMatch = updatedRange.match(/:M(\d+)$/);
+    if (rowMatch) {
+      const rowNumber = rowMatch[1];
+      // Set the GOOGLEFINANCE formula for currency conversion in column N
+      // Formula: If currency equals base currency, use currentPrice; otherwise convert
+      const formula = `=IF(G${rowNumber}=Settings!$B$2,D${rowNumber},D${rowNumber}*GOOGLEFINANCE("CURRENCY:"&G${rowNumber}&Settings!$B$2))`;
+
+      await sheets.spreadsheets.values.update({
+        spreadsheetId: SPREADSHEET_ID,
+        range: `${WISHLIST_SHEET}!N${rowNumber}`,
+        valueInputOption: 'USER_ENTERED',
+        requestBody: {
+          values: [[formula]],
+        },
+      });
+    }
+  }
 }
 
 // Update item by ID
@@ -219,21 +252,23 @@ export async function updateItem(id: string, updates: Partial<WishlistItem>): Pr
     throw new Error(`Item with ID ${id} not found`);
   }
 
-  // Get current row data
+  // Get current row data (A-N for reading, but we only write A-M to preserve formula in N)
   const currentRow = await sheets.spreadsheets.values.get({
     spreadsheetId: SPREADSHEET_ID,
-    range: `${WISHLIST_SHEET}!A${rowIndex + 1}:M${rowIndex + 1}`,
+    range: `${WISHLIST_SHEET}!A${rowIndex + 1}:N${rowIndex + 1}`,
+    valueRenderOption: 'FORMATTED_VALUE', // Get calculated values from formulas
   });
 
   if (!currentRow.data.values || currentRow.data.values.length === 0) {
     throw new Error(`Item with ID ${id} not found`);
   }
 
-  // Merge updates
+  // Merge updates (exclude priceInBaseCurrency as it's calculated by formula)
   const currentItem = rowToItem(currentRow.data.values[0]);
-  const updatedItem: WishlistItem = { ...currentItem, ...updates };
+  const { priceInBaseCurrency: _, ...updatesWithoutCalculated } = updates;
+  const updatedItem: WishlistItem = { ...currentItem, ...updatesWithoutCalculated };
 
-  // Write back
+  // Write back to A-M only (preserve formula in column N)
   await sheets.spreadsheets.values.update({
     spreadsheetId: SPREADSHEET_ID,
     range: `${WISHLIST_SHEET}!A${rowIndex + 1}:M${rowIndex + 1}`,
@@ -241,7 +276,14 @@ export async function updateItem(id: string, updates: Partial<WishlistItem>): Pr
     requestBody: { values: [itemToRow(updatedItem)] },
   });
 
-  return updatedItem;
+  // Re-read to get the recalculated priceInBaseCurrency
+  const updatedRow = await sheets.spreadsheets.values.get({
+    spreadsheetId: SPREADSHEET_ID,
+    range: `${WISHLIST_SHEET}!A${rowIndex + 1}:N${rowIndex + 1}`,
+    valueRenderOption: 'FORMATTED_VALUE',
+  });
+
+  return rowToItem(updatedRow.data.values?.[0] || []);
 }
 
 // Delete item by ID
@@ -357,4 +399,49 @@ export async function updateSettings(settings: Partial<UserSettings>): Promise<U
   }
 
   return getSettings();
+}
+
+// Migration helper: Add formulas to existing rows that don't have them
+export async function migrateAddPriceFormulas(): Promise<{ updated: number; skipped: number }> {
+  await ensureInitialized();
+  const sheets = getClient();
+
+  // Get all rows including column N (to check which need formulas)
+  const response = await sheets.spreadsheets.values.get({
+    spreadsheetId: SPREADSHEET_ID,
+    range: `${WISHLIST_SHEET}!A2:N`,
+    valueRenderOption: 'FORMULA', // Get formulas, not values
+  });
+
+  if (!response.data.values || response.data.values.length === 0) {
+    return { updated: 0, skipped: 0 };
+  }
+
+  let updated = 0;
+  let skipped = 0;
+
+  for (let i = 0; i < response.data.values.length; i++) {
+    const row = response.data.values[i];
+    const rowNumber = i + 2; // +2 because we start from row 2 (after header)
+    const hasFormula = row[13] && row[13].toString().startsWith('=');
+
+    if (!hasFormula) {
+      // Add the formula
+      const formula = `=IF(G${rowNumber}=Settings!$B$2,D${rowNumber},D${rowNumber}*GOOGLEFINANCE("CURRENCY:"&G${rowNumber}&Settings!$B$2))`;
+
+      await sheets.spreadsheets.values.update({
+        spreadsheetId: SPREADSHEET_ID,
+        range: `${WISHLIST_SHEET}!N${rowNumber}`,
+        valueInputOption: 'USER_ENTERED',
+        requestBody: {
+          values: [[formula]],
+        },
+      });
+      updated++;
+    } else {
+      skipped++;
+    }
+  }
+
+  return { updated, skipped };
 }

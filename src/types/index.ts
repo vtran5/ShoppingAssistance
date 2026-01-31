@@ -19,6 +19,7 @@ export interface WishlistItem {
   notes: string;
   createdAt: string;
   lastChecked: string | null;
+  priceInBaseCurrency: number | null; // Calculated via GOOGLEFINANCE formula in Google Sheets
 }
 
 // User settings

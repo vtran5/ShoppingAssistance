@@ -1,6 +1,6 @@
 'use client';
 
-import { WishlistItem as WishlistItemType } from '@/types';
+import { WishlistItem as WishlistItemType, Currency } from '@/types';
 import { ItemImage } from '@/components/ui/ItemImage';
 import { StarRating } from '@/components/ui/StarRating';
 import { formatPrice } from '@/lib/currency';
@@ -8,13 +8,18 @@ import { formatPrice } from '@/lib/currency';
 interface WishlistItemProps {
   item: WishlistItemType;
   onClick: () => void;
+  baseCurrency?: Currency;
 }
 
-export function WishlistItem({ item, onClick }: WishlistItemProps) {
+export function WishlistItem({ item, onClick, baseCurrency }: WishlistItemProps) {
   const priceChange = item.currentPrice - item.priceWhenAdded;
   const priceChangePercent = item.priceWhenAdded
     ? ((priceChange / item.priceWhenAdded) * 100).toFixed(0)
     : 0;
+
+  // Show converted price if item currency differs from base currency
+  const showConvertedPrice =
+    baseCurrency && item.currency !== baseCurrency && item.priceInBaseCurrency !== null;
 
   return (
     <button
@@ -92,6 +97,11 @@ export function WishlistItem({ item, onClick }: WishlistItemProps) {
           <span className="text-lg font-bold text-gray-900">
             {formatPrice(item.currentPrice, item.currency)}
           </span>
+          {showConvertedPrice && (
+            <span className="text-sm text-gray-600">
+              ({formatPrice(item.priceInBaseCurrency!, baseCurrency!)})
+            </span>
+          )}
           {item.originalPrice && item.originalPrice > item.currentPrice && (
             <span className="text-sm text-gray-500 line-through">
               {formatPrice(item.originalPrice, item.currency)}

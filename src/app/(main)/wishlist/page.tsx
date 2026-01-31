@@ -13,12 +13,14 @@ import {
   UpdateItemRequest,
   SortOption,
   FilterOptions,
+  Currency,
 } from '@/types';
 
 export default function WishlistPage() {
   const [items, setItems] = useState<WishlistItem[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const [baseCurrency, setBaseCurrency] = useState<Currency>('USD');
 
   // Modal states
   const [addModalOpen, setAddModalOpen] = useState(false);
@@ -34,17 +36,32 @@ export default function WishlistPage() {
   });
   const [filterPanelOpen, setFilterPanelOpen] = useState(false);
 
-  // Fetch items
+  // Fetch items and settings
   const fetchItems = useCallback(async () => {
     try {
       setLoading(true);
       setError(null);
-      const response = await fetch('/api/items');
-      if (!response.ok) {
+
+      // Fetch items and settings in parallel
+      const [itemsResponse, settingsResponse] = await Promise.all([
+        fetch('/api/items'),
+        fetch('/api/settings'),
+      ]);
+
+      if (!itemsResponse.ok) {
         throw new Error('Failed to fetch items');
       }
-      const data = await response.json();
-      setItems(data.items);
+
+      const itemsData = await itemsResponse.json();
+      setItems(itemsData.items);
+
+      // Settings fetch is optional - don't fail if it errors
+      if (settingsResponse.ok) {
+        const settingsData = await settingsResponse.json();
+        if (settingsData.baseCurrency) {
+          setBaseCurrency(settingsData.baseCurrency);
+        }
+      }
     } catch (err) {
       setError('Failed to load items. Please try again.');
       console.error(err);
@@ -107,6 +124,12 @@ export default function WishlistPage() {
     setItems((prev) => prev.filter((item) => item.id !== id));
   }, []);
 
+  // Helper to get price for sorting/filtering (uses converted price if available)
+  const getComparablePrice = useCallback((item: WishlistItem): number => {
+    // Use priceInBaseCurrency if available, otherwise fall back to currentPrice
+    return item.priceInBaseCurrency ?? item.currentPrice;
+  }, []);
+
   // Sort items
   const sortedItems = useCallback(() => {
     const sorted = [...items];
@@ -116,10 +139,10 @@ export default function WishlistPage() {
         sorted.sort((a, b) => b.priority - a.priority);
         break;
       case 'price-low':
-        sorted.sort((a, b) => a.currentPrice - b.currentPrice);
+        sorted.sort((a, b) => getComparablePrice(a) - getComparablePrice(b));
         break;
       case 'price-high':
-        sorted.sort((a, b) => b.currentPrice - a.currentPrice);
+        sorted.sort((a, b) => getComparablePrice(b) - getComparablePrice(a));
         break;
       case 'date-added':
         sorted.sort(
@@ -130,7 +153,7 @@ export default function WishlistPage() {
     }
 
     return sorted;
-  }, [items, sortBy]);
+  }, [items, sortBy, getComparablePrice]);
 
   // Filter items
   const filteredItems = useCallback(() => {
@@ -140,11 +163,12 @@ export default function WishlistPage() {
         return false;
       }
 
-      // Filter by price range
-      if (filters.minPrice !== null && item.currentPrice < filters.minPrice) {
+      // Filter by price range (using converted price for consistent comparison)
+      const price = getComparablePrice(item);
+      if (filters.minPrice !== null && price < filters.minPrice) {
         return false;
       }
-      if (filters.maxPrice !== null && item.currentPrice > filters.maxPrice) {
+      if (filters.maxPrice !== null && price > filters.maxPrice) {
         return false;
       }
 
@@ -158,7 +182,7 @@ export default function WishlistPage() {
 
       return true;
     });
-  }, [sortedItems, filters]);
+  }, [sortedItems, filters, getComparablePrice]);
 
   // Calculate active filter count
   const activeFilterCount = useCallback(() => {
@@ -265,6 +289,7 @@ export default function WishlistPage() {
       <WishlistGrid
         items={filteredItems()}
         onItemClick={(item) => setEditItem(item)}
+        baseCurrency={baseCurrency}
       />
 
       {/* Add button (FAB) */}
