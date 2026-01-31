@@ -17,9 +17,9 @@ describe('ViewSizeDropdown', () => {
     const onChange = vi.fn();
     render(<ViewSizeDropdown value="large" onChange={onChange} />);
 
-    expect(screen.getByRole('option', { name: '1 per row' })).toBeInTheDocument();
-    expect(screen.getByRole('option', { name: '2 per row' })).toBeInTheDocument();
-    expect(screen.getByRole('option', { name: '4 per row' })).toBeInTheDocument();
+    expect(screen.getByRole('option', { name: 'Large' })).toBeInTheDocument();
+    expect(screen.getByRole('option', { name: 'Medium' })).toBeInTheDocument();
+    expect(screen.getByRole('option', { name: 'Small' })).toBeInTheDocument();
   });
 
   it('calls onChange with new value when selection changes', () => {

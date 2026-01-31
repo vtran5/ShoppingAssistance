@@ -8,9 +8,9 @@ interface ViewSizeDropdownProps {
 }
 
 const VIEW_SIZE_OPTIONS: { value: ItemViewSize; label: string }[] = [
-  { value: 'large', label: '1 per row' },
-  { value: 'medium', label: '2 per row' },
-  { value: 'small', label: '4 per row' },
+  { value: 'large', label: 'Large' },
+  { value: 'medium', label: 'Medium' },
+  { value: 'small', label: 'Small' },
 ];
 
 export function ViewSizeDropdown({ value, onChange }: ViewSizeDropdownProps) {
