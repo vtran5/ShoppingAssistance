@@ -24,7 +24,7 @@ export async function PUT(request: Request) {
     }
 
     // Validate baseCurrency if provided
-    if (body.baseCurrency !== undefined && body.baseCurrency.trim() === '') {
+    if (body.baseCurrency !== undefined && body.baseCurrency !== null && body.baseCurrency.trim() === '') {
       return NextResponse.json({ error: 'Base currency cannot be empty' }, { status: 400 });
     }
 

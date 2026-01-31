@@ -49,9 +49,9 @@ export function WishlistItem({ item, onClick, baseCurrency, viewSize = 'large' }
   }[viewSize];
 
   const linkButtonClasses = {
-    large: 'p-2',
-    medium: 'p-1.5',
-    small: 'p-1',
+    large: 'top-2 left-2 p-2',
+    medium: 'top-1 left-1 p-1.5',
+    small: 'top-1 left-1 p-1',
   }[viewSize];
 
   const linkIconClasses = {
@@ -65,6 +65,27 @@ export function WishlistItem({ item, onClick, baseCurrency, viewSize = 'large' }
     medium: 'xs' as const,
     small: 'xs' as const,
   }[viewSize];
+
+  const purchasedBadgeClasses = {
+    large: 'top-2 right-2 px-2 py-1 text-xs',
+    medium: 'top-1 right-1 px-1.5 py-0.5 text-[10px]',
+    small: 'top-1 right-1 p-1',
+  }[viewSize];
+
+  const CheckIcon = () => (
+    <svg
+      xmlns="http://www.w3.org/2000/svg"
+      className="h-3 w-3"
+      viewBox="0 0 20 20"
+      fill="currentColor"
+    >
+      <path
+        fillRule="evenodd"
+        d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z"
+        clipRule="evenodd"
+      />
+    </svg>
+  );
 
   return (
     <button
@@ -84,38 +105,10 @@ export function WishlistItem({ item, onClick, baseCurrency, viewSize = 'large' }
           className={`w-full ${imageHeight}`}
         />
         {item.isPurchased && (
-          viewSize === 'small' ? (
-            <div className="absolute top-1 right-1 bg-green-500 text-white p-1 rounded-full">
-              <svg
-                xmlns="http://www.w3.org/2000/svg"
-                className="h-3 w-3"
-                viewBox="0 0 20 20"
-                fill="currentColor"
-              >
-                <path
-                  fillRule="evenodd"
-                  d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z"
-                  clipRule="evenodd"
-                />
-              </svg>
-            </div>
-          ) : (
-            <div className={`absolute ${viewSize === 'medium' ? 'top-1 right-1 px-1.5 py-0.5 text-[10px]' : 'top-2 right-2 px-2 py-1 text-xs'} bg-green-500 text-white rounded-full font-medium flex items-center gap-1`}>
-              <svg
-                xmlns="http://www.w3.org/2000/svg"
-                className="h-3 w-3"
-                viewBox="0 0 20 20"
-                fill="currentColor"
-              >
-                <path
-                  fillRule="evenodd"
-                  d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z"
-                  clipRule="evenodd"
-                />
-              </svg>
-              Purchased
-            </div>
-          )
+          <div className={`absolute ${purchasedBadgeClasses} bg-green-500 text-white rounded-full font-medium flex items-center gap-1`}>
+            <CheckIcon />
+            {viewSize !== 'small' && 'Purchased'}
+          </div>
         )}
         {!item.url && viewSize === 'large' && (
           <div className="absolute top-2 left-2 bg-gray-700 text-white px-2 py-1 rounded-full text-xs font-medium">
@@ -128,7 +121,7 @@ export function WishlistItem({ item, onClick, baseCurrency, viewSize = 'large' }
             target="_blank"
             rel="noopener noreferrer"
             onClick={(e) => e.stopPropagation()}
-            className={`absolute ${viewSize === 'small' ? 'top-1 left-1' : viewSize === 'medium' ? 'top-1 left-1' : 'top-2 left-2'} bg-blue-600 text-white ${linkButtonClasses} rounded-full hover:bg-blue-700 transition-colors`}
+            className={`absolute ${linkButtonClasses} bg-blue-600 text-white rounded-full hover:bg-blue-700 transition-colors`}
             aria-label="Open product page"
           >
             <svg

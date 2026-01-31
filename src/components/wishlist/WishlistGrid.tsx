@@ -17,6 +17,7 @@ export function WishlistGrid({ items, onItemClick, baseCurrency, viewSize = 'lar
     medium: 'grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 gap-3',
     small: 'grid-cols-4 sm:grid-cols-5 lg:grid-cols-6 gap-2',
   }[viewSize];
+
   if (items.length === 0) {
     return (
       <div className="flex flex-col items-center justify-center py-12 px-4 text-center">

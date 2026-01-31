@@ -21,6 +21,7 @@ export function ViewSizeDropdown({ value, onChange }: ViewSizeDropdownProps) {
       </label>
       <select
         id="viewSize"
+        aria-label="Items per row"
         value={value}
         onChange={(e) => onChange(e.target.value as ItemViewSize)}
         className="px-3 py-2 min-h-[44px] text-sm rounded-lg border border-gray-300 bg-white focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
