@@ -165,6 +165,117 @@ describe('WishlistItem', () => {
     });
   });
 
+  describe('view size: list', () => {
+    it('renders with horizontal flex layout', () => {
+      const { container } = render(
+        <WishlistItem item={mockItem} onClick={vi.fn()} viewSize="list" />
+      );
+      // Check for flex-row class on the button
+      const button = container.querySelector('button');
+      expect(button?.className).toContain('flex');
+      expect(button?.className).toContain('flex-row');
+    });
+
+    it('applies 80x80 fixed image size', () => {
+      const { container } = render(
+        <WishlistItem item={mockItem} onClick={vi.fn()} viewSize="list" />
+      );
+      expect(container.querySelector('.w-\\[80px\\]')).toBeInTheDocument();
+      expect(container.querySelector('.h-\\[80px\\]')).toBeInTheDocument();
+    });
+
+    it('renders item name', () => {
+      render(<WishlistItem item={mockItem} onClick={vi.fn()} viewSize="list" />);
+      expect(screen.getByText('Test Product')).toBeInTheDocument();
+    });
+
+    it('renders current price', () => {
+      render(<WishlistItem item={mockItem} onClick={vi.fn()} viewSize="list" />);
+      expect(screen.getByText('$99.99')).toBeInTheDocument();
+    });
+
+    it('renders star rating', () => {
+      const { container } = render(
+        <WishlistItem item={mockItem} onClick={vi.fn()} viewSize="list" />
+      );
+      // StarRating component should be present
+      expect(container.querySelector('[data-testid="star-rating"]') || container.querySelectorAll('svg').length > 0).toBeTruthy();
+    });
+
+    it('hides notes preview', () => {
+      render(
+        <WishlistItem item={mockItem} onClick={vi.fn()} viewSize="list" />
+      );
+      expect(screen.queryByText('This is a test note')).not.toBeInTheDocument();
+    });
+
+    it('hides price change indicator', () => {
+      render(
+        <WishlistItem item={mockItem} onClick={vi.fn()} viewSize="list" />
+      );
+      expect(screen.queryByText(/Added:/)).not.toBeInTheDocument();
+    });
+
+    it('hides original price strikethrough', () => {
+      render(
+        <WishlistItem item={mockItem} onClick={vi.fn()} viewSize="list" />
+      );
+      expect(screen.queryByText('$150.00')).not.toBeInTheDocument();
+    });
+
+    it('hides Manual badge', () => {
+      const itemWithoutUrl = { ...mockItem, url: null };
+      render(
+        <WishlistItem item={itemWithoutUrl} onClick={vi.fn()} viewSize="list" />
+      );
+      expect(screen.queryByText('Manual')).not.toBeInTheDocument();
+    });
+
+    it('shows icon-only Purchased badge (no text)', () => {
+      const purchasedItem = { ...mockItem, isPurchased: true };
+      render(
+        <WishlistItem item={purchasedItem} onClick={vi.fn()} viewSize="list" />
+      );
+      // The badge should exist but not contain "Purchased" text
+      expect(screen.queryByText('Purchased')).not.toBeInTheDocument();
+      // The checkmark icon should still be present (via svg in green badge)
+      const badge = document.querySelector('.bg-green-500');
+      expect(badge).toBeInTheDocument();
+    });
+
+    it('renders link button when URL is present', () => {
+      render(<WishlistItem item={mockItem} onClick={vi.fn()} viewSize="list" />);
+      const link = screen.getByRole('link', { name: /open product page/i });
+      expect(link).toHaveAttribute('href', 'https://example.com/product');
+    });
+
+    it('calls onClick when clicked', () => {
+      const onClick = vi.fn();
+      const { container } = render(<WishlistItem item={mockItem} onClick={onClick} viewSize="list" />);
+
+      const cardButton = container.querySelector('button');
+      fireEvent.click(cardButton!);
+      expect(onClick).toHaveBeenCalledTimes(1);
+    });
+
+    it('hides converted price', () => {
+      const itemWithConversion = {
+        ...mockItem,
+        currency: 'EUR',
+        priceInBaseCurrency: 110,
+      };
+      render(
+        <WishlistItem
+          item={itemWithConversion}
+          onClick={vi.fn()}
+          baseCurrency="USD"
+          viewSize="list"
+        />
+      );
+      expect(screen.queryByText('($110.00)')).not.toBeInTheDocument();
+    });
+  });
+
   describe('converted price', () => {
     it('shows converted price in large view when currencies differ', () => {
       const itemWithConversion: WishlistItemType = {

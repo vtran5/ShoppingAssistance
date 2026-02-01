@@ -11,6 +11,7 @@ const VIEW_SIZE_OPTIONS: { value: ItemViewSize; label: string }[] = [
   { value: 'large', label: 'Large' },
   { value: 'medium', label: 'Medium' },
   { value: 'small', label: 'Small' },
+  { value: 'list', label: 'List' },
 ];
 
 export function ViewSizeDropdown({ value, onChange }: ViewSizeDropdownProps) {

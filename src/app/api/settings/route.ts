@@ -29,7 +29,7 @@ export async function PUT(request: Request) {
     }
 
     // Validate itemViewSize if provided
-    const validViewSizes = ['large', 'medium', 'small'];
+    const validViewSizes = ['large', 'medium', 'small', 'list'];
     if (body.itemViewSize !== undefined && !validViewSizes.includes(body.itemViewSize)) {
       return NextResponse.json({ error: 'Invalid item view size' }, { status: 400 });
     }

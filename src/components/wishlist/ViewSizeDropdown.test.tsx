@@ -20,6 +20,7 @@ describe('ViewSizeDropdown', () => {
     expect(screen.getByRole('option', { name: 'Large' })).toBeInTheDocument();
     expect(screen.getByRole('option', { name: 'Medium' })).toBeInTheDocument();
     expect(screen.getByRole('option', { name: 'Small' })).toBeInTheDocument();
+    expect(screen.getByRole('option', { name: 'List' })).toBeInTheDocument();
   });
 
   it('calls onChange with new value when selection changes', () => {
@@ -47,7 +48,7 @@ describe('ViewSizeDropdown', () => {
     expect(select).toBeInTheDocument();
   });
 
-  it.each<ItemViewSize>(['large', 'medium', 'small'])(
+  it.each<ItemViewSize>(['large', 'medium', 'small', 'list'])(
     'correctly displays %s as selected value',
     (size) => {
       const onChange = vi.fn();
@@ -57,4 +58,14 @@ describe('ViewSizeDropdown', () => {
       expect(select).toHaveValue(size);
     }
   );
+
+  it('calls onChange with list when List option is selected', () => {
+    const onChange = vi.fn();
+    render(<ViewSizeDropdown value="large" onChange={onChange} />);
+
+    const select = screen.getByRole('combobox', { name: /items per row/i });
+    fireEvent.change(select, { target: { value: 'list' } });
+
+    expect(onChange).toHaveBeenCalledWith('list');
+  });
 });

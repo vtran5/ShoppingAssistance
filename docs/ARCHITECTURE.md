@@ -174,7 +174,10 @@ interface ExchangeRates {
 
 interface UserSettings {
   baseCurrency: Currency;        // User's preferred currency for display
+  itemViewSize: ItemViewSize;    // Grid/list view preference
 }
+
+type ItemViewSize = 'large' | 'medium' | 'small' | 'list';
 ```
 
 ### 3. Google Sheets Schema
@@ -749,7 +752,40 @@ export const metadata: Metadata = {
 };
 ```
 
-### 9. UI Wireframes (Text-based)
+### 9. View Size Options
+
+The wishlist supports four view size options that control how items are displayed:
+
+| View Size | Layout | Columns (Mobile) | Image Size | Content Shown |
+|-----------|--------|------------------|------------|---------------|
+| **Large** | Grid (vertical cards) | 1 | 200px height | Full details: name, prices, converted price, original price, price change, priority, notes |
+| **Medium** | Grid (vertical cards) | 2 | 120px height | Name, current price, priority stars |
+| **Small** | Grid (vertical cards) | 4 | 80px height | Name, current price, priority stars (compact) |
+| **List** | Horizontal cards | 1 | 80×80px (fixed) | Name, current price, priority stars |
+
+**List View Layout:**
+```
+┌────────────────────────────────────────────────┐
+│ ┌────────┐                                     │
+│ │  IMG   │  Product Name (line-clamp-1)        │
+│ │ 80x80  │  $29.99                             │
+│ │ [link] │  ★★★★☆                              │
+│ └────────┘                                     │
+└────────────────────────────────────────────────┘
+```
+
+**List View Specifics:**
+- Image: Fixed 80×80px, positioned on the left
+- Content: Flex container on the right with name, price, and priority
+- Link button: Overlaid on image (top-left), same as other views
+- Purchased styling: Grayed out with checkmark icon (no text)
+- Manual badge: Hidden (not shown)
+- Notes preview: Hidden
+- Converted/original prices: Hidden
+- Price change indicator: Hidden
+- Single column on all screen sizes (mobile to desktop)
+
+### 10. UI Wireframes (Text-based)
 
 **Wishlist Page (Mobile)**
 ```
