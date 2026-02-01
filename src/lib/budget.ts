@@ -36,9 +36,9 @@ function greedyByPriority(items: WishlistItem[], budget: number): BudgetSuggesti
   return {
     strategy: 'high-priority',
     items: selected,
-    totalCost: budget - remaining,
+    totalCost: Math.round((budget - remaining) * 100) / 100,
     priorityScore: selected.reduce((sum, item) => sum + item.priority, 0),
-    remaining,
+    remaining: Math.round(remaining * 100) / 100,
   };
 }
 
@@ -64,9 +64,9 @@ function greedyByCheapest(items: WishlistItem[], budget: number): BudgetSuggesti
   return {
     strategy: 'most-items',
     items: selected,
-    totalCost: budget - remaining,
+    totalCost: Math.round((budget - remaining) * 100) / 100,
     priorityScore: selected.reduce((sum, item) => sum + item.priority, 0),
-    remaining,
+    remaining: Math.round(remaining * 100) / 100,
   };
 }
 
@@ -94,9 +94,9 @@ function greedyByValue(items: WishlistItem[], budget: number): BudgetSuggestion 
   return {
     strategy: 'best-value',
     items: selected,
-    totalCost: budget - remaining,
+    totalCost: Math.round((budget - remaining) * 100) / 100,
     priorityScore: selected.reduce((sum, item) => sum + item.priority, 0),
-    remaining,
+    remaining: Math.round(remaining * 100) / 100,
   };
 }
 

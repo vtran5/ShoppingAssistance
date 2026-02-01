@@ -5,7 +5,6 @@ import { Currency, BudgetSuggestion } from '@/types';
 
 interface BudgetRequest {
   budget: number;
-  currency: Currency;
 }
 
 interface BudgetResponse {
@@ -32,22 +31,14 @@ export async function POST(request: NextRequest): Promise<NextResponse> {
       );
     }
 
-    if (!body.currency) {
-      return NextResponse.json(
-        { error: 'Currency is required' },
-        { status: 400 }
-      );
-    }
-
     // Get all items and settings
     const [items, settings] = await Promise.all([
       getAllItems(),
       getSettings(),
     ]);
 
-    // Generate suggestions
-    // Note: priceInBaseCurrency is already in the user's base currency from Google Sheets
-    // The budget currency should match the base currency for accurate comparison
+    // Generate suggestions using base currency
+    // priceInBaseCurrency is already converted via GOOGLEFINANCE formula in Google Sheets
     const suggestions = suggestPurchases(items, body.budget);
 
     const response: BudgetResponse = {

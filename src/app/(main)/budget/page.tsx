@@ -31,7 +31,7 @@ export default function BudgetPage() {
     loadSettings();
   }, []);
 
-  const handleSubmit = async (budget: number, currency: Currency) => {
+  const handleSubmit = async (budget: number) => {
     setIsLoadingSuggestions(true);
     setError(null);
     setSuggestions(null);
@@ -41,7 +41,7 @@ export default function BudgetPage() {
       const response = await fetch('/api/budget', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ budget, currency }),
+        body: JSON.stringify({ budget }),
       });
 
       if (!response.ok) {
@@ -83,7 +83,7 @@ export default function BudgetPage() {
         <BudgetInput
           onSubmit={handleSubmit}
           isLoading={isLoadingSuggestions}
-          defaultCurrency={baseCurrency}
+          baseCurrency={baseCurrency}
         />
 
         {/* Error state */}

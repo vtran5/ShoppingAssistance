@@ -3,21 +3,19 @@
 import { useState } from 'react';
 import { Currency } from '@/types';
 import { Button } from '@/components/ui/Button';
-import { CurrencySelect } from '@/components/ui/CurrencySelect';
 
 interface BudgetInputProps {
-  onSubmit: (budget: number, currency: Currency) => void;
+  onSubmit: (budget: number) => void;
   isLoading: boolean;
-  defaultCurrency: Currency;
+  baseCurrency: Currency;
 }
 
 export function BudgetInput({
   onSubmit,
   isLoading,
-  defaultCurrency,
+  baseCurrency,
 }: BudgetInputProps) {
   const [budget, setBudget] = useState<string>('');
-  const [currency, setCurrency] = useState<Currency>(defaultCurrency);
   const [error, setError] = useState<string | null>(null);
 
   const handleSubmit = (e: React.FormEvent) => {
@@ -30,7 +28,7 @@ export function BudgetInput({
       return;
     }
 
-    onSubmit(budgetNumber, currency);
+    onSubmit(budgetNumber);
   };
 
   return (
@@ -40,7 +38,7 @@ export function BudgetInput({
           htmlFor="budget"
           className="block text-sm font-medium text-gray-700 mb-1"
         >
-          Your Budget
+          Your Budget ({baseCurrency})
         </label>
         <div className="flex gap-2">
           <input
@@ -61,11 +59,9 @@ export function BudgetInput({
               disabled:bg-gray-100 disabled:cursor-not-allowed
             "
           />
-          <CurrencySelect
-            value={currency}
-            onChange={setCurrency}
-            disabled={isLoading}
-          />
+          <span className="flex items-center px-3 py-2 min-h-[44px] bg-gray-100 border border-gray-300 rounded-lg text-gray-700 font-medium">
+            {baseCurrency}
+          </span>
         </div>
         {error && (
           <p className="mt-1 text-sm text-red-600">{error}</p>
