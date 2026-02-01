@@ -204,41 +204,99 @@ export async function getItemById(id: string): Promise<WishlistItem | null> {
   return items.find((item) => item.id === id) || null;
 }
 
-// Add new item
+// Ensure formulas exist for items that need currency conversion
+// This lazily repairs any rows missing formulas before budget calculations
+export async function ensureFormulasExist(
+  items: WishlistItem[],
+  baseCurrency: Currency
+): Promise<WishlistItem[]> {
+  // Find items that might need formula repair:
+  // - priceInBaseCurrency is null/invalid
+  // - currency !== baseCurrency (can't use currentPrice fallback)
+  const suspectItems = items.filter(
+    (item) => item.priceInBaseCurrency === null && item.currency !== baseCurrency
+  );
+
+  if (suspectItems.length === 0) {
+    return items; // Nothing to fix
+  }
+
+  await ensureInitialized();
+  const sheets = getClient();
+
+  // Get row numbers for suspect items by reading all IDs
+  const idsResponse = await sheets.spreadsheets.values.get({
+    spreadsheetId: SPREADSHEET_ID,
+    range: `${WISHLIST_SHEET}!A:A`,
+  });
+  const ids = idsResponse.data.values ?? [];
+
+  // Check formulas for suspect rows
+  const formulasResponse = await sheets.spreadsheets.values.get({
+    spreadsheetId: SPREADSHEET_ID,
+    range: `${WISHLIST_SHEET}!N:N`,
+    valueRenderOption: 'FORMULA',
+  });
+  const formulas = formulasResponse.data.values ?? [];
+
+  // Find rows needing formula repair
+  const rowsToFix: number[] = [];
+  for (const item of suspectItems) {
+    const rowIndex = ids.findIndex((row) => row[0] === item.id);
+    if (rowIndex > 0) {
+      // Skip header (index 0)
+      const formula = formulas[rowIndex]?.[0];
+      if (!formula || !formula.toString().startsWith('=')) {
+        rowsToFix.push(rowIndex + 1); // Convert to 1-indexed row number
+      }
+    }
+  }
+
+  if (rowsToFix.length === 0) {
+    return items; // Formulas exist but return errors (GOOGLEFINANCE issue)
+  }
+
+  // Add formulas to rows missing them
+  for (const rowNumber of rowsToFix) {
+    const formula = `=IF(G${rowNumber}=Settings!$B$2,D${rowNumber},D${rowNumber}*GOOGLEFINANCE("CURRENCY:"&G${rowNumber}&Settings!$B$2))`;
+    await sheets.spreadsheets.values.update({
+      spreadsheetId: SPREADSHEET_ID,
+      range: `${WISHLIST_SHEET}!N${rowNumber}`,
+      valueInputOption: 'USER_ENTERED',
+      requestBody: { values: [[formula]] },
+    });
+  }
+
+  // Re-read all items with updated formulas
+  return getAllItems();
+}
+
+// Add new item (atomic: writes all columns A-N in a single call)
 export async function addItem(item: WishlistItem): Promise<void> {
   await ensureInitialized();
   const sheets = getClient();
 
-  // Append item data to columns A-M
-  const appendResponse = await sheets.spreadsheets.values.append({
+  // Get current row count to determine new row number
+  const countResponse = await sheets.spreadsheets.values.get({
     spreadsheetId: SPREADSHEET_ID,
-    range: `${WISHLIST_SHEET}!A:M`,
+    range: `${WISHLIST_SHEET}!A:A`,
+  });
+  const rowCount = countResponse.data.values?.length ?? 1;
+  const newRowNumber = rowCount + 1;
+
+  // Build formula for currency conversion in column N
+  // Formula: If currency equals base currency, use currentPrice; otherwise convert
+  const formula = `=IF(G${newRowNumber}=Settings!$B$2,D${newRowNumber},D${newRowNumber}*GOOGLEFINANCE("CURRENCY:"&G${newRowNumber}&Settings!$B$2))`;
+
+  // Write entire row (A-N) in single atomic call
+  await sheets.spreadsheets.values.update({
+    spreadsheetId: SPREADSHEET_ID,
+    range: `${WISHLIST_SHEET}!A${newRowNumber}:N${newRowNumber}`,
     valueInputOption: 'USER_ENTERED',
     requestBody: {
-      values: [itemToRow(item)],
+      values: [[...itemToRow(item), formula]],
     },
   });
-
-  // Extract the row number from the updated range (e.g., "Wishlist!A5:M5" -> 5)
-  const updatedRange = appendResponse.data.updates?.updatedRange;
-  if (updatedRange) {
-    const rowMatch = updatedRange.match(/:M(\d+)$/);
-    if (rowMatch) {
-      const rowNumber = rowMatch[1];
-      // Set the GOOGLEFINANCE formula for currency conversion in column N
-      // Formula: If currency equals base currency, use currentPrice; otherwise convert
-      const formula = `=IF(G${rowNumber}=Settings!$B$2,D${rowNumber},D${rowNumber}*GOOGLEFINANCE("CURRENCY:"&G${rowNumber}&Settings!$B$2))`;
-
-      await sheets.spreadsheets.values.update({
-        spreadsheetId: SPREADSHEET_ID,
-        range: `${WISHLIST_SHEET}!N${rowNumber}`,
-        valueInputOption: 'USER_ENTERED',
-        requestBody: {
-          values: [[formula]],
-        },
-      });
-    }
-  }
 }
 
 // Update item by ID

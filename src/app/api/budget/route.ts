@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { getAllItems, getSettings } from '@/lib/sheets';
+import { getAllItems, getSettings, ensureFormulasExist } from '@/lib/sheets';
 import { suggestPurchases } from '@/lib/budget';
 import { Currency, BudgetSuggestion } from '@/types';
 
@@ -32,10 +32,14 @@ export async function POST(request: NextRequest): Promise<NextResponse> {
     }
 
     // Get all items and settings
-    const [items, settings] = await Promise.all([
+    let [items, settings] = await Promise.all([
       getAllItems(),
       getSettings(),
     ]);
+
+    // Ensure formulas exist for items needing currency conversion
+    // This repairs any rows missing formulas before budget calculation
+    items = await ensureFormulasExist(items, settings.baseCurrency);
 
     // Generate suggestions using base currency
     // priceInBaseCurrency is calculated via GOOGLEFINANCE formula in Google Sheets

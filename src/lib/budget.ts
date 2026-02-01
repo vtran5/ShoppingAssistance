@@ -34,7 +34,7 @@ function getAvailableItems(
   budget: number,
   baseCurrency: Currency
 ): WishlistItem[] {
-  return items
+  const mapped = items
     .map((item) => {
       const effectivePrice = getEffectivePrice(item, baseCurrency);
       if (effectivePrice === null) return null;
@@ -42,12 +42,14 @@ function getAvailableItems(
       // Return item with priceInBaseCurrency set to the effective price
       return { ...item, priceInBaseCurrency: effectivePrice };
     })
-    .filter((item): item is WishlistItem => {
+    .filter((item): item is WishlistItem & { priceInBaseCurrency: number } => {
       if (item === null) return false;
       if (item.isPurchased) return false;
-      if (item.priceInBaseCurrency! > budget) return false;
+      if (item.priceInBaseCurrency > budget) return false;
       return true;
     });
+
+  return mapped;
 }
 
 /**
