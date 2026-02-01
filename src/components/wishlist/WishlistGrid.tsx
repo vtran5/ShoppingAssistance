@@ -16,6 +16,7 @@ export function WishlistGrid({ items, onItemClick, baseCurrency, viewSize = 'lar
     large: 'grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4',
     medium: 'grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 gap-3',
     small: 'grid-cols-4 sm:grid-cols-5 lg:grid-cols-6 gap-2',
+    list: 'grid-cols-1 gap-2',
   }[viewSize];
 
   if (items.length === 0) {

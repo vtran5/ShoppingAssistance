@@ -28,49 +28,60 @@ export function WishlistItem({ item, onClick, baseCurrency, viewSize = 'large' }
     large: 'h-[200px]',
     medium: 'h-[120px]',
     small: 'h-[80px]',
+    list: 'h-[80px]',
   }[viewSize];
 
   const contentPadding = {
     large: 'p-3 space-y-2',
     medium: 'p-2 space-y-1',
     small: 'p-1.5 space-y-1',
+    list: 'px-3 py-2 flex flex-col justify-center',
   }[viewSize];
 
   const nameClasses = {
     large: 'font-medium text-gray-900 line-clamp-2',
     medium: 'font-medium text-gray-900 text-sm line-clamp-1',
     small: 'font-medium text-gray-900 text-xs line-clamp-1',
+    list: 'font-medium text-gray-900 text-sm line-clamp-1',
   }[viewSize];
 
   const priceClasses = {
     large: 'text-lg font-bold text-gray-900',
     medium: 'text-sm font-bold text-gray-900',
     small: 'text-xs font-bold text-gray-900',
+    list: 'text-sm font-bold text-gray-900',
   }[viewSize];
 
   const linkButtonClasses = {
     large: 'top-2 left-2 p-2',
     medium: 'top-1 left-1 p-1.5',
     small: 'top-1 left-1 p-1',
+    list: 'top-1 left-1 p-1',
   }[viewSize];
 
   const linkIconClasses = {
     large: 'h-4 w-4',
     medium: 'h-3 w-3',
     small: 'h-3 w-3',
+    list: 'h-3 w-3',
   }[viewSize];
 
   const starSize = {
     large: 'sm' as const,
     medium: 'xs' as const,
     small: 'xs' as const,
+    list: 'xs' as const,
   }[viewSize];
 
   const purchasedBadgeClasses = {
     large: 'top-2 right-2 px-2 py-1 text-xs',
     medium: 'top-1 right-1 px-1.5 py-0.5 text-[10px]',
     small: 'top-1 right-1 p-1',
+    list: 'top-1 right-1 p-1',
   }[viewSize];
+
+  // List view uses horizontal layout
+  const isListView = viewSize === 'list';
 
   const CheckIcon = () => (
     <svg
@@ -87,6 +98,71 @@ export function WishlistItem({ item, onClick, baseCurrency, viewSize = 'large' }
     </svg>
   );
 
+  // List view renders horizontal layout
+  if (isListView) {
+    return (
+      <button
+        onClick={onClick}
+        className={`
+          w-full text-left bg-white rounded-xl shadow-sm border border-gray-200
+          overflow-hidden transition-all hover:shadow-md hover:border-gray-300
+          focus:outline-none focus:ring-2 focus:ring-blue-500
+          flex flex-row
+          ${item.isPurchased ? 'opacity-60' : ''}
+        `}
+      >
+        {/* Image - fixed 80x80 */}
+        <div className="relative w-[80px] h-[80px] flex-shrink-0">
+          <ItemImage
+            src={item.imageData}
+            alt={item.name}
+            className="w-[80px] h-[80px]"
+          />
+          {item.isPurchased && (
+            <div className={`absolute ${purchasedBadgeClasses} bg-green-500 text-white rounded-full font-medium flex items-center gap-1`}>
+              <CheckIcon />
+            </div>
+          )}
+          {item.url && (
+            <a
+              href={item.url}
+              target="_blank"
+              rel="noopener noreferrer"
+              onClick={(e) => e.stopPropagation()}
+              className={`absolute ${linkButtonClasses} bg-blue-600 text-white rounded-full hover:bg-blue-700 transition-colors`}
+              aria-label="Open product page"
+            >
+              <svg
+                xmlns="http://www.w3.org/2000/svg"
+                className={linkIconClasses}
+                fill="none"
+                viewBox="0 0 24 24"
+                stroke="currentColor"
+              >
+                <path
+                  strokeLinecap="round"
+                  strokeLinejoin="round"
+                  strokeWidth={2}
+                  d="M10 6H6a2 2 0 00-2 2v10a2 2 0 002 2h10a2 2 0 002-2v-4M14 4h6m0 0v6m0-6L10 14"
+                />
+              </svg>
+            </a>
+          )}
+        </div>
+
+        {/* Content - flex-1 to fill remaining space */}
+        <div className={`flex-1 ${contentPadding}`}>
+          <h3 className={nameClasses}>{item.name}</h3>
+          <span className={priceClasses}>
+            {formatPrice(item.currentPrice, item.currency)}
+          </span>
+          <StarRating value={item.priority} readonly size={starSize} />
+        </div>
+      </button>
+    );
+  }
+
+  // Default grid layout for large/medium/small views
   return (
     <button
       onClick={onClick}

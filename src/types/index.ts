@@ -5,7 +5,7 @@ export type Currency = 'USD' | 'EUR' | 'GBP' | 'JPY' | 'AUD' | 'CAD' | 'VND' | s
 export type Priority = 1 | 2 | 3 | 4 | 5;
 
 // Item view size for mobile grid layout
-export type ItemViewSize = 'large' | 'medium' | 'small';
+export type ItemViewSize = 'large' | 'medium' | 'small' | 'list';
 
 // Wishlist item - main data model
 export interface WishlistItem {
