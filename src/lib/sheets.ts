@@ -135,6 +135,13 @@ export async function ensureInitialized(): Promise<void> {
 
 // Convert sheet row to WishlistItem
 function rowToItem(row: string[]): WishlistItem {
+  // Parse priceInBaseCurrency, returning null for invalid values (e.g., formula errors like #N/A)
+  const parsedBaseCurrencyPrice = row[13] ? parseFloat(row[13]) : null;
+  const priceInBaseCurrency =
+    parsedBaseCurrencyPrice !== null && !isNaN(parsedBaseCurrencyPrice)
+      ? parsedBaseCurrencyPrice
+      : null;
+
   return {
     id: row[0] || '',
     name: row[1] || '',
@@ -149,7 +156,7 @@ function rowToItem(row: string[]): WishlistItem {
     notes: row[10] || '',
     createdAt: row[11] || new Date().toISOString(),
     lastChecked: row[12] || null,
-    priceInBaseCurrency: row[13] ? parseFloat(row[13]) : null,
+    priceInBaseCurrency,
   };
 }
 

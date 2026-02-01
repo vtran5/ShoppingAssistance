@@ -1,19 +1,53 @@
-import { WishlistItem, BudgetSuggestion } from '@/types';
+import { WishlistItem, BudgetSuggestion, Currency } from '@/types';
+
+/**
+ * Get the effective price in base currency for an item.
+ * Falls back to currentPrice if item currency matches base currency and priceInBaseCurrency is invalid.
+ */
+function getEffectivePrice(item: WishlistItem, baseCurrency: Currency): number | null {
+  // If priceInBaseCurrency is valid, use it
+  if (
+    item.priceInBaseCurrency !== null &&
+    typeof item.priceInBaseCurrency === 'number' &&
+    !isNaN(item.priceInBaseCurrency) &&
+    item.priceInBaseCurrency > 0
+  ) {
+    return item.priceInBaseCurrency;
+  }
+
+  // Fallback: if item currency matches base currency, use currentPrice directly
+  if (item.currency === baseCurrency && item.currentPrice > 0) {
+    return item.currentPrice;
+  }
+
+  return null;
+}
 
 /**
  * Filter items that can be considered for budget suggestions
  * - Must not be purchased
- * - Must have a valid priceInBaseCurrency
+ * - Must have a valid price in base currency
  * - Price must be within budget
  */
-function getAvailableItems(items: WishlistItem[], budget: number): WishlistItem[] {
-  return items.filter(
-    (item) =>
-      !item.isPurchased &&
-      item.priceInBaseCurrency !== null &&
-      item.priceInBaseCurrency > 0 &&
-      item.priceInBaseCurrency <= budget
-  );
+function getAvailableItems(
+  items: WishlistItem[],
+  budget: number,
+  baseCurrency: Currency
+): WishlistItem[] {
+  return items
+    .map((item) => {
+      const effectivePrice = getEffectivePrice(item, baseCurrency);
+      if (effectivePrice === null) return null;
+
+      // Return item with priceInBaseCurrency set to the effective price
+      return { ...item, priceInBaseCurrency: effectivePrice };
+    })
+    .filter((item): item is WishlistItem => {
+      if (item === null) return false;
+      if (item.isPurchased) return false;
+      if (item.priceInBaseCurrency! > budget) return false;
+      return true;
+    });
 }
 
 /**
@@ -134,10 +168,11 @@ function deduplicateSuggestions(suggestions: BudgetSuggestion[]): BudgetSuggesti
  */
 export function suggestPurchases(
   items: WishlistItem[],
-  budget: number
+  budget: number,
+  baseCurrency: Currency
 ): BudgetSuggestion[] {
-  // Filter to available items
-  const available = getAvailableItems(items, budget);
+  // Filter to available items (with fallback pricing for same-currency items)
+  const available = getAvailableItems(items, budget, baseCurrency);
 
   // No items available
   if (available.length === 0) {

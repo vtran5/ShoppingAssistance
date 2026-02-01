@@ -38,8 +38,9 @@ export async function POST(request: NextRequest): Promise<NextResponse> {
     ]);
 
     // Generate suggestions using base currency
-    // priceInBaseCurrency is already converted via GOOGLEFINANCE formula in Google Sheets
-    const suggestions = suggestPurchases(items, body.budget);
+    // priceInBaseCurrency is calculated via GOOGLEFINANCE formula in Google Sheets
+    // Falls back to currentPrice for items already in the base currency
+    const suggestions = suggestPurchases(items, body.budget, settings.baseCurrency);
 
     const response: BudgetResponse = {
       suggestions,
