@@ -1,34 +1,127 @@
 'use client';
 
+import { useState, useEffect } from 'react';
+import { Currency, BudgetSuggestion } from '@/types';
+import { BudgetInput } from '@/components/budget/BudgetInput';
+import { SuggestionCard } from '@/components/budget/SuggestionCard';
+
 export default function BudgetPage() {
-  return (
-    <div className="px-4 py-8">
-      <div className="max-w-md mx-auto text-center">
-        <svg
-          xmlns="http://www.w3.org/2000/svg"
-          className="h-16 w-16 text-gray-300 mx-auto mb-4"
-          fill="none"
-          viewBox="0 0 24 24"
-          stroke="currentColor"
-        >
-          <path
-            strokeLinecap="round"
-            strokeLinejoin="round"
-            strokeWidth={1.5}
-            d="M12 8c-1.657 0-3 .895-3 2s1.343 2 3 2 3 .895 3 2-1.343 2-3 2m0-8c1.11 0 2.08.402 2.599 1M12 8V7m0 1v8m0 0v1m0-1c-1.11 0-2.08-.402-2.599-1M21 12a9 9 0 11-18 0 9 9 0 0118 0z"
-          />
-        </svg>
-        <h2 className="text-xl font-semibold text-gray-900 mb-2">
-          Budget Suggestions
-        </h2>
-        <p className="text-gray-500 mb-4">
-          Coming soon! This feature will help you decide what to buy based on
-          your budget.
-        </p>
-        <div className="bg-blue-50 text-blue-700 px-4 py-3 rounded-lg text-sm">
-          Enter your budget and get smart suggestions based on item priority and
-          price.
+  const [baseCurrency, setBaseCurrency] = useState<Currency>('USD');
+  const [isLoadingSettings, setIsLoadingSettings] = useState(true);
+  const [isLoadingSuggestions, setIsLoadingSuggestions] = useState(false);
+  const [suggestions, setSuggestions] = useState<BudgetSuggestion[] | null>(null);
+  const [error, setError] = useState<string | null>(null);
+  const [hasSearched, setHasSearched] = useState(false);
+
+  // Load user's base currency on mount
+  useEffect(() => {
+    async function loadSettings() {
+      try {
+        const response = await fetch('/api/settings');
+        if (response.ok) {
+          const data = await response.json();
+          setBaseCurrency(data.baseCurrency);
+        }
+      } catch (err) {
+        console.error('Failed to load settings:', err);
+      } finally {
+        setIsLoadingSettings(false);
+      }
+    }
+    loadSettings();
+  }, []);
+
+  const handleSubmit = async (budget: number) => {
+    setIsLoadingSuggestions(true);
+    setError(null);
+    setSuggestions(null);
+    setHasSearched(true);
+
+    try {
+      const response = await fetch('/api/budget', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ budget }),
+      });
+
+      if (!response.ok) {
+        const data = await response.json();
+        throw new Error(data.error || 'Failed to get suggestions');
+      }
+
+      const data = await response.json();
+      setSuggestions(data.suggestions);
+      setBaseCurrency(data.baseCurrency);
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'An error occurred');
+    } finally {
+      setIsLoadingSuggestions(false);
+    }
+  };
+
+  if (isLoadingSettings) {
+    return (
+      <div className="px-4 py-8">
+        <div className="max-w-md mx-auto text-center">
+          <div className="animate-pulse">
+            <div className="h-6 bg-gray-200 rounded w-48 mx-auto mb-4"></div>
+            <div className="h-10 bg-gray-200 rounded mb-2"></div>
+            <div className="h-10 bg-gray-200 rounded"></div>
+          </div>
         </div>
+      </div>
+    );
+  }
+
+  return (
+    <div className="px-4 py-6">
+      <div className="max-w-md mx-auto">
+        <h1 className="text-xl font-semibold text-gray-900 mb-6">
+          Budget Suggestions
+        </h1>
+
+        <BudgetInput
+          onSubmit={handleSubmit}
+          isLoading={isLoadingSuggestions}
+          baseCurrency={baseCurrency}
+        />
+
+        {/* Error state */}
+        {error && (
+          <div className="mt-6 bg-red-50 text-red-700 px-4 py-3 rounded-lg">
+            {error}
+          </div>
+        )}
+
+        {/* Results */}
+        {hasSearched && !isLoadingSuggestions && !error && (
+          <div className="mt-6 space-y-4">
+            {suggestions && suggestions.length > 0 ? (
+              suggestions.map((suggestion, index) => (
+                <SuggestionCard
+                  key={suggestion.strategy}
+                  suggestion={suggestion}
+                  baseCurrency={baseCurrency}
+                  index={index + 1}
+                />
+              ))
+            ) : (
+              <div className="bg-yellow-50 text-yellow-700 px-4 py-3 rounded-lg">
+                <p className="font-medium">No items fit your budget</p>
+                <p className="text-sm mt-1">
+                  Try increasing your budget or adding lower-priced items to your wishlist.
+                </p>
+              </div>
+            )}
+          </div>
+        )}
+
+        {/* Initial state hint */}
+        {!hasSearched && (
+          <div className="mt-6 bg-blue-50 text-blue-700 px-4 py-3 rounded-lg text-sm">
+            Enter your budget to get smart suggestions based on item priority and price.
+          </div>
+        )}
       </div>
     </div>
   );
