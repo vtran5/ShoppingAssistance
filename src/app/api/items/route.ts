@@ -49,6 +49,7 @@ export async function POST(request: Request) {
       createdAt: now,
       lastChecked: body.url ? now : null,
       priceInBaseCurrency: null, // Calculated by GOOGLEFINANCE formula in Google Sheets
+      previousPrice: null, // Set on first price check
     };
 
     await addItem(newItem);

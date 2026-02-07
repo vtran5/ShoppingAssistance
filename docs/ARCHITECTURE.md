@@ -147,6 +147,7 @@ interface WishlistItem {
   notes: string;                 // User notes
   createdAt: string;             // ISO date
   lastChecked: string | null;    // ISO date (null for manual items)
+  previousPrice: number | null;  // Price before last automated check (for Phase 4 price tracking)
 }
 
 interface BudgetSuggestion {
@@ -178,6 +179,28 @@ interface UserSettings {
 }
 
 type ItemViewSize = 'large' | 'medium' | 'small' | 'list';
+
+// Phase 4: Price Tracking types
+interface PriceCheckResult {
+  itemId: string;
+  itemName: string;
+  previousPrice: number;
+  currentPrice: number | null;   // null if scraping failed
+  currency: Currency;
+  priceChanged: boolean;
+  percentChange: number | null;
+  error?: string;
+}
+
+interface PriceCheckSummary {
+  totalChecked: number;
+  priceDrops: number;
+  priceIncreases: number;
+  unchanged: number;
+  failed: number;
+  results: PriceCheckResult[];
+  checkedAt: string;             // ISO timestamp
+}
 ```
 
 ### 3. Google Sheets Schema
@@ -200,6 +223,7 @@ type ItemViewSize = 'large' | 'medium' | 'small' | 'list';
 | L: CreatedAt | string | ISO timestamp |
 | M: LastChecked | string | ISO timestamp (empty for manual items) |
 | N: PriceInBaseCurrency | number | **Calculated via formula** - see below |
+| O: PreviousPrice | number | Price before last automated check (for price tracking) |
 
 **Currency Conversion Formula (Column N)**
 
@@ -351,6 +375,32 @@ Get or update user settings.
   baseCurrency: string  // e.g., "USD"
 }
 ```
+
+#### `POST /api/price-check`
+Triggers automated price checking for all URL-based, unpurchased items.
+
+**Authentication:** Requires `Authorization: Bearer <CRON_SECRET>` header.
+
+```typescript
+// Response
+{
+  summary: {
+    totalChecked: number,
+    priceDrops: number,
+    priceIncreases: number,
+    unchanged: number,
+    failed: number,
+    results: PriceCheckResult[],
+    checkedAt: string  // ISO timestamp
+  }
+}
+```
+
+**Notes:**
+- Called by GitHub Actions cron job (daily at 8:00 UTC)
+- Includes 3-second delay between requests to avoid rate limiting
+- Only logs price changes >= 1% threshold
+- Updates `currentPrice`, `previousPrice`, and `lastChecked` in Google Sheets
 
 ### 5. Google Sheets Integration
 
