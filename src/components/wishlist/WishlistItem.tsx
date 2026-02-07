@@ -12,6 +12,63 @@ interface WishlistItemProps {
   viewSize?: ItemViewSize;
 }
 
+// Format relative time (e.g., "2h ago", "3d ago")
+function formatTimeAgo(isoDate: string): string {
+  const date = new Date(isoDate);
+  const now = new Date();
+  const diffMs = now.getTime() - date.getTime();
+  const diffHours = Math.floor(diffMs / (1000 * 60 * 60));
+
+  if (diffHours < 1) {
+    return 'just now';
+  } else if (diffHours < 24) {
+    return `${diffHours}h ago`;
+  } else {
+    const diffDays = Math.floor(diffHours / 24);
+    return `${diffDays}d ago`;
+  }
+}
+
+// Price change indicator component (compared to priceWhenAdded)
+function PriceChangeFromOriginal({
+  currentPrice,
+  priceWhenAdded,
+}: {
+  currentPrice: number;
+  priceWhenAdded: number;
+}) {
+  if (priceWhenAdded === 0) return null;
+
+  const changeFromOriginal = currentPrice - priceWhenAdded;
+  const percentFromOriginal = (changeFromOriginal / priceWhenAdded) * 100;
+
+  // Only show if change is >= 1%
+  if (Math.abs(percentFromOriginal) < 1) {
+    return null;
+  }
+
+  const isDropped = changeFromOriginal < 0;
+
+  return (
+    <span
+      className={`inline-flex items-center gap-0.5 text-xs font-medium ${
+        isDropped ? 'text-green-600' : 'text-red-600'
+      }`}
+    >
+      {isDropped ? (
+        <svg className="w-3 h-3" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 14l-7 7m0 0l-7-7m7 7V3" />
+        </svg>
+      ) : (
+        <svg className="w-3 h-3" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 10l7-7m0 0l7 7m-7-7v18" />
+        </svg>
+      )}
+      {Math.abs(percentFromOriginal).toFixed(0)}%
+    </span>
+  );
+}
+
 export function WishlistItem({ item, onClick, baseCurrency, viewSize = 'large' }: WishlistItemProps) {
   const priceChange = item.currentPrice - item.priceWhenAdded;
   const priceChangePercent = item.priceWhenAdded
@@ -242,17 +299,21 @@ export function WishlistItem({ item, onClick, baseCurrency, viewSize = 'large' }
 
         {/* Price change indicator - only in large view */}
         {viewSize === 'large' && item.priceWhenAdded !== item.currentPrice && (
-          <div className="text-xs">
+          <div className="flex items-center gap-2 text-xs">
             <span className="text-gray-500">
               Added: {formatPrice(item.priceWhenAdded, item.currency)}
             </span>
-            <span
-              className={`ml-2 font-medium ${
-                priceChange < 0 ? 'text-green-600' : 'text-red-600'
-              }`}
-            >
-              {priceChange < 0 ? '↓' : '↑'} {Math.abs(Number(priceChangePercent))}%
-            </span>
+            <PriceChangeFromOriginal
+              currentPrice={item.currentPrice}
+              priceWhenAdded={item.priceWhenAdded}
+            />
+          </div>
+        )}
+
+        {/* Last checked indicator - only in large view for URL-based items */}
+        {viewSize === 'large' && item.url && item.lastChecked && (
+          <div className="text-xs text-gray-400">
+            Checked {formatTimeAgo(item.lastChecked)}
           </div>
         )}
 

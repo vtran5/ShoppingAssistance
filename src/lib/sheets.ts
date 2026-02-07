@@ -20,6 +20,7 @@ const WISHLIST_HEADERS = [
   'CreatedAt',
   'LastChecked',
   'PriceInBaseCurrency',
+  'PreviousPrice',
 ];
 
 const SETTINGS_HEADERS = ['Key', 'Value'];
@@ -82,23 +83,27 @@ async function initializeSheets(): Promise<void> {
   // Check and add headers for Wishlist
   const wishlistData = await sheets.spreadsheets.values.get({
     spreadsheetId: SPREADSHEET_ID,
-    range: `${WISHLIST_SHEET}!A1:N1`,
+    range: `${WISHLIST_SHEET}!A1:O1`,
   });
 
   if (!wishlistData.data.values || wishlistData.data.values.length === 0) {
     await sheets.spreadsheets.values.update({
       spreadsheetId: SPREADSHEET_ID,
-      range: `${WISHLIST_SHEET}!A1:N1`,
+      range: `${WISHLIST_SHEET}!A1:O1`,
       valueInputOption: 'RAW',
       requestBody: { values: [WISHLIST_HEADERS] },
     });
   } else if (wishlistData.data.values[0].length < WISHLIST_HEADERS.length) {
-    // Add missing PriceInBaseCurrency header if sheet exists but column is missing
+    // Add missing headers if sheet exists but columns are missing
+    const existingCount = wishlistData.data.values[0].length;
+    const missingHeaders = WISHLIST_HEADERS.slice(existingCount);
+    const startColumn = String.fromCharCode(65 + existingCount); // A=65
+    const endColumn = String.fromCharCode(65 + WISHLIST_HEADERS.length - 1);
     await sheets.spreadsheets.values.update({
       spreadsheetId: SPREADSHEET_ID,
-      range: `${WISHLIST_SHEET}!N1`,
+      range: `${WISHLIST_SHEET}!${startColumn}1:${endColumn}1`,
       valueInputOption: 'RAW',
-      requestBody: { values: [['PriceInBaseCurrency']] },
+      requestBody: { values: [missingHeaders] },
     });
   }
 
@@ -142,6 +147,13 @@ function rowToItem(row: string[]): WishlistItem {
       ? parsedBaseCurrencyPrice
       : null;
 
+  // Parse previousPrice (column O / index 14)
+  const parsedPreviousPrice = row[14] ? parseFloat(row[14]) : null;
+  const previousPrice =
+    parsedPreviousPrice !== null && !isNaN(parsedPreviousPrice)
+      ? parsedPreviousPrice
+      : null;
+
   return {
     id: row[0] || '',
     name: row[1] || '',
@@ -157,10 +169,11 @@ function rowToItem(row: string[]): WishlistItem {
     createdAt: row[11] || new Date().toISOString(),
     lastChecked: row[12] || null,
     priceInBaseCurrency,
+    previousPrice,
   };
 }
 
-// Convert WishlistItem to sheet row
+// Convert WishlistItem to sheet row (columns A-M, excludes formula columns N and O)
 function itemToRow(item: WishlistItem): (string | number | boolean)[] {
   return [
     item.id,
@@ -179,6 +192,15 @@ function itemToRow(item: WishlistItem): (string | number | boolean)[] {
   ];
 }
 
+// Convert WishlistItem to full sheet row (columns A-O, includes previousPrice)
+function itemToFullRow(item: WishlistItem): (string | number | boolean)[] {
+  return [
+    ...itemToRow(item),
+    '', // Column N: PriceInBaseCurrency (formula, will be added separately)
+    item.previousPrice ?? '',
+  ];
+}
+
 // Read all items
 export async function getAllItems(): Promise<WishlistItem[]> {
   await ensureInitialized();
@@ -186,7 +208,7 @@ export async function getAllItems(): Promise<WishlistItem[]> {
 
   const response = await sheets.spreadsheets.values.get({
     spreadsheetId: SPREADSHEET_ID,
-    range: `${WISHLIST_SHEET}!A2:N`,
+    range: `${WISHLIST_SHEET}!A2:O`,
     valueRenderOption: 'FORMATTED_VALUE', // Get calculated values from formulas
   });
 
@@ -317,10 +339,10 @@ export async function updateItem(id: string, updates: Partial<WishlistItem>): Pr
     throw new Error(`Item with ID ${id} not found`);
   }
 
-  // Get current row data (A-N for reading, but we only write A-M to preserve formula in N)
+  // Get current row data (A-O for reading, but we only write A-M to preserve formula in N and previousPrice in O)
   const currentRow = await sheets.spreadsheets.values.get({
     spreadsheetId: SPREADSHEET_ID,
-    range: `${WISHLIST_SHEET}!A${rowIndex + 1}:N${rowIndex + 1}`,
+    range: `${WISHLIST_SHEET}!A${rowIndex + 1}:O${rowIndex + 1}`,
     valueRenderOption: 'FORMATTED_VALUE', // Get calculated values from formulas
   });
 
@@ -344,7 +366,7 @@ export async function updateItem(id: string, updates: Partial<WishlistItem>): Pr
   // Re-read to get the recalculated priceInBaseCurrency
   const updatedRow = await sheets.spreadsheets.values.get({
     spreadsheetId: SPREADSHEET_ID,
-    range: `${WISHLIST_SHEET}!A${rowIndex + 1}:N${rowIndex + 1}`,
+    range: `${WISHLIST_SHEET}!A${rowIndex + 1}:O${rowIndex + 1}`,
     valueRenderOption: 'FORMATTED_VALUE',
   });
 
@@ -542,4 +564,58 @@ export async function migrateAddPriceFormulas(): Promise<{ updated: number; skip
   }
 
   return { updated, skipped };
+}
+
+// Get items eligible for price checking (URL-based, not purchased)
+export async function getItemsForPriceCheck(): Promise<WishlistItem[]> {
+  const allItems = await getAllItems();
+  return allItems.filter((item) => item.url !== null && !item.isPurchased);
+}
+
+// Update item price after automated price check
+export async function updateItemAfterPriceCheck(
+  id: string,
+  newPrice: number,
+  previousPrice: number,
+  lastChecked: string
+): Promise<void> {
+  await ensureInitialized();
+  const sheets = getClient();
+
+  // Find the row with matching ID
+  const response = await sheets.spreadsheets.values.get({
+    spreadsheetId: SPREADSHEET_ID,
+    range: `${WISHLIST_SHEET}!A:A`,
+  });
+
+  const rows = response.data.values ?? [];
+  const rowIndex = rows.findIndex((row) => row[0] === id);
+
+  if (rowIndex === -1) {
+    throw new Error(`Item with ID ${id} not found`);
+  }
+
+  const rowNumber = rowIndex + 1;
+
+  // Update CurrentPrice (D), LastChecked (M), and PreviousPrice (O) in a batch
+  await sheets.spreadsheets.values.batchUpdate({
+    spreadsheetId: SPREADSHEET_ID,
+    requestBody: {
+      valueInputOption: 'USER_ENTERED',
+      data: [
+        {
+          range: `${WISHLIST_SHEET}!D${rowNumber}`,
+          values: [[newPrice]],
+        },
+        {
+          range: `${WISHLIST_SHEET}!M${rowNumber}`,
+          values: [[lastChecked]],
+        },
+        {
+          range: `${WISHLIST_SHEET}!O${rowNumber}`,
+          values: [[previousPrice]],
+        },
+      ],
+    },
+  });
 }

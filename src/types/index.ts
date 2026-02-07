@@ -23,6 +23,7 @@ export interface WishlistItem {
   createdAt: string;
   lastChecked: string | null;
   priceInBaseCurrency: number | null; // Calculated via GOOGLEFINANCE formula in Google Sheets
+  previousPrice: number | null; // Price before last automated check (for Phase 4)
 }
 
 // User settings
@@ -99,4 +100,30 @@ export interface BudgetSuggestion {
   totalCost: number;
   priorityScore: number;
   remaining: number;
+}
+
+// Price check types (for Phase 4)
+export interface PriceCheckResult {
+  itemId: string;
+  itemName: string;
+  previousPrice: number;
+  currentPrice: number | null; // null if scraping failed
+  currency: Currency;
+  priceChanged: boolean;
+  percentChange: number | null;
+  error?: string;
+}
+
+export interface PriceCheckSummary {
+  totalChecked: number;
+  priceDrops: number;
+  priceIncreases: number;
+  unchanged: number;
+  failed: number;
+  results: PriceCheckResult[];
+  checkedAt: string;
+}
+
+export interface PriceCheckResponse {
+  summary: PriceCheckSummary;
 }

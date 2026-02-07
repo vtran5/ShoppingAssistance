@@ -636,10 +636,136 @@ Before moving to Phase 2, verify all Phase 1 requirements:
 3. Create Budget page UI
 4. Display suggestion cards
 
-### Phase 4: Price Tracking
-1. Set up Vercel Cron job
-2. Implement price checking
-3. Add notification system
+### Phase 4: Price Tracking - Detailed
+
+Phase 4 implements automated price checking via GitHub Actions cron, with in-app price change indicators.
+
+---
+
+#### Step 4.1: Data Model Updates
+**Goal:** Add `previousPrice` field to track price before last check
+
+**Tasks:**
+1. Add `PriceCheckResult` and `PriceCheckSummary` types to `src/types/index.ts`
+2. Add `previousPrice` field to `WishlistItem` interface
+3. Add column O (PreviousPrice) to Google Sheets schema
+
+**Verification:**
+- [x] Types compile without errors
+- [x] New column added to WISHLIST_HEADERS
+
+---
+
+#### Step 4.2: Google Sheets Integration Updates
+**Goal:** Support reading/writing previousPrice and price check operations
+
+**Tasks:**
+1. Update `WISHLIST_HEADERS` to include PreviousPrice
+2. Update `rowToItem()` to parse column O
+3. Update `getAllItems()` range to A2:O
+4. Add `getItemsForPriceCheck()` - returns URL-based, unpurchased items
+5. Add `updateItemAfterPriceCheck()` - batch update price, lastChecked, previousPrice
+
+**Verification:**
+- [x] New functions exported from sheets.ts
+- [x] Existing items still load correctly
+
+---
+
+#### Step 4.3: Price Checker Module
+**Goal:** Core price checking logic with rate limiting
+
+**File:** `src/lib/priceChecker.ts`
+
+**Tasks:**
+1. Implement `checkItemPrice()` - scrape single item, compare prices
+2. Implement `checkAllPrices()` - iterate all eligible items with delay
+3. Apply 1% threshold for significant price changes
+4. Update Google Sheets on price change
+
+**Verification:**
+- [x] Module exports `checkAllPrices()` function
+- [x] Rate limiting (3s delay) between requests
+
+---
+
+#### Step 4.4: Price Check API Endpoint
+**Goal:** Protected API endpoint for triggering price checks
+
+**File:** `src/app/api/price-check/route.ts`
+
+**Tasks:**
+1. Create POST endpoint with Bearer token auth (CRON_SECRET)
+2. Call `checkAllPrices()` and return summary
+3. Support GET for compatibility
+
+**Verification:**
+- [x] Returns 401 without valid auth
+- [x] Returns 200 with summary on success
+
+---
+
+#### Step 4.5: GitHub Actions Workflow
+**Goal:** Automated daily price checking
+
+**File:** `.github/workflows/price-check.yml`
+
+**Tasks:**
+1. Cron schedule: daily at 8:00 UTC
+2. Manual trigger via workflow_dispatch
+3. Call API endpoint with CRON_SECRET
+4. Generate job summary
+
+**Required Secrets:**
+- `VERCEL_APP_URL` - Deployed app URL
+- `CRON_SECRET` - Same as in Vercel env vars
+
+**Verification:**
+- [x] Workflow file created
+- [x] Manual trigger works from GitHub UI
+
+---
+
+#### Step 4.6: UI Updates
+**Goal:** Display price changes and last checked timestamp
+
+**File:** `src/components/wishlist/WishlistItem.tsx`
+
+**Tasks:**
+1. Add `PriceChangeFromOriginal` component (green/red arrows with %)
+2. Add `formatTimeAgo()` helper for relative time
+3. Show "Checked Xh/Xd ago" for URL-based items (large view)
+
+**Verification:**
+- [x] Price drops show green down arrow
+- [x] Price increases show red up arrow
+- [x] Last checked timestamp displays
+
+---
+
+#### Step 4.7: Environment Updates
+**Goal:** Document required environment variables
+
+**Tasks:**
+1. Add `CRON_SECRET` to `.env.example`
+
+**Verification:**
+- [x] .env.example updated
+
+---
+
+### Phase 4 Completion Checklist
+
+- [x] Types added (PriceCheckResult, PriceCheckSummary)
+- [x] WishlistItem has previousPrice field
+- [x] Google Sheets column O (PreviousPrice) supported
+- [x] getItemsForPriceCheck() and updateItemAfterPriceCheck() functions
+- [x] priceChecker.ts module with rate limiting
+- [x] POST /api/price-check endpoint with auth
+- [x] GitHub Actions workflow with cron schedule
+- [x] UI shows price change indicators
+- [x] UI shows last checked timestamp
+- [x] CRON_SECRET in .env.example
 
 ---
 
@@ -648,6 +774,38 @@ Before moving to Phase 2, verify all Phase 1 requirements:
 Technical debt and improvements identified during PR #1 review. Address these in future iterations.
 
 ### High Priority
+
+#### 0. iOS Push Notifications for Price Drops
+**Status:** Planned for future release
+
+**Current behavior:** Price drop alerts shown in-app only (user must open the app to see them).
+
+**Goal:** Send push notifications to iOS when significant price drops are detected.
+
+**Requirements:**
+- iOS 16.4+ for PWA push notification support
+- Web Push API implementation
+- VAPID key generation and storage
+- Service worker push event handler
+- Notification permission request in Settings
+- Backend logic to trigger push on price drops (>5%)
+
+**Implementation tasks:**
+1. Generate VAPID keys and add to environment variables
+2. Update service worker to handle push events
+3. Create `/api/push/subscribe` endpoint for subscription management
+4. Store push subscriptions in a new Google Sheets tab
+5. Update `checkAllPrices()` to send push notifications for price drops
+6. Add notification permission UI in Settings page
+7. Add `web-push` npm package dependency
+
+**Considerations:**
+- Only available for PWAs added to home screen
+- User must grant notification permission
+- Need to handle subscription expiration
+- Consider notification throttling to avoid spam
+
+---
 
 #### 1. Fix Race Condition in Google Sheets Initialization
 **File:** `src/lib/sheets.ts:120-125`

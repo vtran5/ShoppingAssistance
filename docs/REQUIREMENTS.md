@@ -18,6 +18,7 @@ This document defines all requirements for the Shopping Assistant MVP. Each requ
    - [FR10: Budget Suggestions](#fr10-budget-suggestions)
    - [FR11: PWA Configuration](#fr11-pwa-configuration)
    - [FR12: User Settings](#fr12-user-settings)
+   - [FR13: Price Tracking](#fr13-price-tracking-phase-4)
 2. [Non-Functional Requirements](#non-functional-requirements)
 3. [API Requirements](#api-requirements)
 4. [Data Requirements](#data-requirements)
@@ -337,6 +338,37 @@ EXCHANGE_RATE_API_URL=
 
 ---
 
+### FR13: Price Tracking (Phase 4)
+
+**Description:** Automated price checking via GitHub Actions cron job with in-app price change indicators.
+
+| ID | Requirement | Acceptance Criteria |
+|----|-------------|---------------------|
+| FR13.1 | GitHub Actions workflow | `.github/workflows/price-check.yml` exists with cron schedule |
+| FR13.2 | Daily price checks | Workflow runs daily at 8:00 UTC |
+| FR13.3 | Manual trigger | Workflow can be triggered manually via `workflow_dispatch` |
+| FR13.4 | API authentication | `/api/price-check` requires `Authorization: Bearer <CRON_SECRET>` |
+| FR13.5 | Check eligible items | Only URL-based, unpurchased items are checked |
+| FR13.6 | Rate limiting | 3-second delay between requests to avoid being blocked |
+| FR13.7 | Price change threshold | Only log changes >= 1% as significant |
+| FR13.8 | Update Google Sheets | On price change, update `currentPrice`, `previousPrice`, `lastChecked` |
+| FR13.9 | Price change indicator | UI shows green down arrow for price drops, red up arrow for increases |
+| FR13.10 | Last checked display | UI shows "Checked Xh ago" for URL-based items in large view |
+| FR13.11 | Check summary | API returns summary with counts (drops, increases, unchanged, failed) |
+
+**Verification Steps:**
+1. Trigger workflow manually from GitHub UI → workflow runs successfully
+2. Check Google Sheets → `lastChecked` updated for checked items
+3. Price drops → green down arrow with percentage shown in UI
+4. Price increases → red up arrow with percentage shown in UI
+5. URL-based items show "Checked Xh ago" in large view
+
+**Required GitHub Secrets:**
+- `VERCEL_APP_URL` - Deployed app URL
+- `CRON_SECRET` - API authentication secret
+
+---
+
 ## Non-Functional Requirements
 
 | ID | Requirement | Acceptance Criteria |
@@ -366,6 +398,7 @@ EXCHANGE_RATE_API_URL=
 | `/api/currency/rates` | GET | `?base=USD` | `{ base, rates, lastUpdated }` | 200, 500 |
 | `/api/settings` | GET | - | `{ baseCurrency: string }` | 200, 500 |
 | `/api/settings` | PUT | `{ baseCurrency: string }` | `{ baseCurrency: string }` | 200, 400, 500 |
+| `/api/price-check` | POST | `Authorization: Bearer <CRON_SECRET>` | `{ summary: PriceCheckSummary }` | 200, 401, 500 |
 
 ---
 
@@ -388,6 +421,7 @@ EXCHANGE_RATE_API_URL=
 | notes | string | No | "" | User notes |
 | createdAt | string | Yes | now() | ISO timestamp |
 | lastChecked | string \| null | No | null | Last price check |
+| previousPrice | number \| null | No | null | Price before last check |
 
 ---
 
