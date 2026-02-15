@@ -135,6 +135,55 @@ export default function SettingsPage() {
           Save Settings
         </Button>
 
+        {/* Share from Safari */}
+        <div className="bg-white rounded-xl p-4 shadow-sm border border-gray-200">
+          <h3 className="text-sm font-medium text-gray-700 mb-1">
+            Share from Safari
+          </h3>
+          <p className="text-xs text-gray-500 mb-3">
+            Add items directly from Safari using the Share button
+          </p>
+          <div className="bg-gray-50 rounded-lg p-3">
+            <p className="text-xs font-medium text-gray-700 mb-2">
+              Setup with iOS Shortcuts:
+            </p>
+            <ol className="text-xs text-gray-600 space-y-2 list-decimal list-inside">
+              <li>
+                Open the <span className="font-medium">Shortcuts</span> app on
+                your iPhone
+              </li>
+              <li>
+                Tap <span className="font-medium">+</span> to create a new
+                shortcut
+              </li>
+              <li>
+                Add action:{' '}
+                <span className="font-medium">Receive input</span> from{' '}
+                <span className="font-medium">Share Sheet</span> (accept URLs)
+              </li>
+              <li>
+                Add action:{' '}
+                <span className="font-medium">Open URL</span> and set it to:
+                <code className="block mt-1 px-2 py-1 bg-white rounded border border-gray-200 text-[11px] text-gray-800 break-all">
+                  {typeof window !== 'undefined'
+                    ? window.location.origin
+                    : 'https://your-app-url'}
+                  /share?url=[Shortcut Input]
+                </code>
+              </li>
+              <li>
+                Name it{' '}
+                <span className="font-medium">&quot;Add to Wishlist&quot;</span>{' '}
+                and tap Done
+              </li>
+            </ol>
+            <p className="text-xs text-gray-500 mt-3">
+              After setup, tap the Share button in Safari on any product page,
+              then select &quot;Add to Wishlist&quot; from the share sheet.
+            </p>
+          </div>
+        </div>
+
         {/* App info */}
         <div className="pt-6 border-t border-gray-200">
           <h3 className="text-sm font-medium text-gray-700 mb-2">About</h3>

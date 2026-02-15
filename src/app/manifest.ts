@@ -18,5 +18,12 @@ export default function manifest(): MetadataRoute.Manifest {
         purpose: 'any',
       },
     ],
+    share_target: {
+      action: '/share',
+      method: 'get',
+      url: 'url',
+      title: 'title',
+      text: 'text',
+    },
   };
 }
