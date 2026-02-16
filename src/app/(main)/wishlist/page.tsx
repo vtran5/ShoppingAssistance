@@ -117,6 +117,44 @@ export default function WishlistPage() {
     []
   );
 
+  // Toggle purchased status (optimistic update)
+  const handleTogglePurchased = useCallback(
+    async (id: string, isPurchased: boolean) => {
+      // Optimistic update
+      setItems((prev) =>
+        prev.map((item) =>
+          item.id === id ? { ...item, isPurchased } : item
+        )
+      );
+
+      try {
+        const response = await fetch(`/api/items/${id}`, {
+          method: 'PUT',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ isPurchased }),
+        });
+
+        if (!response.ok) {
+          throw new Error('Failed to update item');
+        }
+
+        const data = await response.json();
+        setItems((prev) =>
+          prev.map((item) => (item.id === id ? data.item : item))
+        );
+      } catch {
+        // Rollback on failure
+        setItems((prev) =>
+          prev.map((item) =>
+            item.id === id ? { ...item, isPurchased: !isPurchased } : item
+          )
+        );
+        console.error('Failed to toggle purchased status');
+      }
+    },
+    []
+  );
+
   // Delete item
   const handleDeleteItem = useCallback(async (id: string) => {
     const response = await fetch(`/api/items/${id}`, {
@@ -312,6 +350,7 @@ export default function WishlistPage() {
       <WishlistGrid
         items={filteredItems()}
         onItemClick={(item) => setEditItem(item)}
+        onTogglePurchased={handleTogglePurchased}
         baseCurrency={baseCurrency}
         viewSize={itemViewSize}
       />

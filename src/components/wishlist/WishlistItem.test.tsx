@@ -60,10 +60,14 @@ describe('WishlistItem', () => {
       expect(screen.getByText('Manual')).toBeInTheDocument();
     });
 
-    it('renders Purchased badge with text when purchased', () => {
+    it('applies purchased visual treatment when purchased', () => {
       const purchasedItem = { ...mockItem, isPurchased: true };
-      render(<WishlistItem item={purchasedItem} onClick={vi.fn()} />);
-      expect(screen.getByText('Purchased')).toBeInTheDocument();
+      const { container } = render(<WishlistItem item={purchasedItem} onClick={vi.fn()} />);
+      // Green left border on card
+      const card = container.querySelector('button');
+      expect(card?.className).toContain('border-l-green-500');
+      // Grayscale on image wrapper
+      expect(container.querySelector('.grayscale')).toBeInTheDocument();
     });
 
     it('applies 200px image height', () => {
@@ -113,12 +117,14 @@ describe('WishlistItem', () => {
       expect(screen.queryByText('$150.00')).not.toBeInTheDocument();
     });
 
-    it('still shows Purchased text in badge', () => {
+    it('applies purchased visual treatment when purchased', () => {
       const purchasedItem = { ...mockItem, isPurchased: true };
-      render(
+      const { container } = render(
         <WishlistItem item={purchasedItem} onClick={vi.fn()} viewSize="medium" />
       );
-      expect(screen.getByText('Purchased')).toBeInTheDocument();
+      const card = container.querySelector('button');
+      expect(card?.className).toContain('border-l-green-500');
+      expect(container.querySelector('.grayscale')).toBeInTheDocument();
     });
   });
 
@@ -152,16 +158,17 @@ describe('WishlistItem', () => {
       expect(screen.queryByText('Manual')).not.toBeInTheDocument();
     });
 
-    it('shows icon-only Purchased badge (no text)', () => {
+    it('applies purchased visual treatment when purchased', () => {
       const purchasedItem = { ...mockItem, isPurchased: true };
-      render(
+      const { container } = render(
         <WishlistItem item={purchasedItem} onClick={vi.fn()} viewSize="small" />
       );
-      // The badge should exist but not contain "Purchased" text
+      // No "Purchased" text badge
       expect(screen.queryByText('Purchased')).not.toBeInTheDocument();
-      // The checkmark icon should still be present (via svg)
-      const badge = document.querySelector('.bg-green-500');
-      expect(badge).toBeInTheDocument();
+      // Green left border and grayscale image
+      const card = container.querySelector('button');
+      expect(card?.className).toContain('border-l-green-500');
+      expect(container.querySelector('.grayscale')).toBeInTheDocument();
     });
   });
 
@@ -231,16 +238,17 @@ describe('WishlistItem', () => {
       expect(screen.queryByText('Manual')).not.toBeInTheDocument();
     });
 
-    it('shows icon-only Purchased badge (no text)', () => {
+    it('applies purchased visual treatment when purchased', () => {
       const purchasedItem = { ...mockItem, isPurchased: true };
-      render(
+      const { container } = render(
         <WishlistItem item={purchasedItem} onClick={vi.fn()} viewSize="list" />
       );
-      // The badge should exist but not contain "Purchased" text
+      // No "Purchased" text badge
       expect(screen.queryByText('Purchased')).not.toBeInTheDocument();
-      // The checkmark icon should still be present (via svg in green badge)
-      const badge = document.querySelector('.bg-green-500');
-      expect(badge).toBeInTheDocument();
+      // Green left border and grayscale image
+      const card = container.querySelector('button');
+      expect(card?.className).toContain('border-l-green-500');
+      expect(container.querySelector('.grayscale')).toBeInTheDocument();
     });
 
     it('renders link button when URL is present', () => {
