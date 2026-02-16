@@ -6,11 +6,12 @@ import { WishlistItem } from './WishlistItem';
 interface WishlistGridProps {
   items: WishlistItemType[];
   onItemClick: (item: WishlistItemType) => void;
+  onTogglePurchased?: (id: string, isPurchased: boolean) => void;
   baseCurrency?: Currency;
   viewSize?: ItemViewSize;
 }
 
-export function WishlistGrid({ items, onItemClick, baseCurrency, viewSize = 'large' }: WishlistGridProps) {
+export function WishlistGrid({ items, onItemClick, onTogglePurchased, baseCurrency, viewSize = 'large' }: WishlistGridProps) {
   // Grid classes based on view size
   const gridClasses = {
     large: 'grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4',
@@ -51,6 +52,7 @@ export function WishlistGrid({ items, onItemClick, baseCurrency, viewSize = 'lar
           key={item.id}
           item={item}
           onClick={() => onItemClick(item)}
+          onTogglePurchased={onTogglePurchased}
           baseCurrency={baseCurrency}
           viewSize={viewSize}
         />

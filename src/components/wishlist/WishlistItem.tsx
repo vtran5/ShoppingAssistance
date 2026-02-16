@@ -8,11 +8,12 @@ import { formatPrice } from '@/lib/currency';
 interface WishlistItemProps {
   item: WishlistItemType;
   onClick: () => void;
+  onTogglePurchased?: (id: string, isPurchased: boolean) => void;
   baseCurrency?: Currency;
   viewSize?: ItemViewSize;
 }
 
-export function WishlistItem({ item, onClick, baseCurrency, viewSize = 'large' }: WishlistItemProps) {
+export function WishlistItem({ item, onClick, onTogglePurchased, baseCurrency, viewSize = 'large' }: WishlistItemProps) {
   const priceChange = item.currentPrice - item.priceWhenAdded;
   const priceChangePercent = item.priceWhenAdded
     ? ((priceChange / item.priceWhenAdded) * 100).toFixed(0)
@@ -73,33 +74,90 @@ export function WishlistItem({ item, onClick, baseCurrency, viewSize = 'large' }
     list: 'xs' as const,
   }[viewSize];
 
-  const purchasedBadgeClasses = {
-    large: 'top-2 right-2 px-2 py-1 text-xs',
-    medium: 'top-1 right-1 px-1.5 py-0.5 text-[10px]',
-    small: 'top-1 right-1 p-1',
-    list: 'top-1 right-1 p-1',
+  const toggleIconSize = {
+    large: 'h-6 w-6',
+    medium: 'h-5 w-5',
+    small: 'h-[18px] w-[18px]',
+    list: 'h-5 w-5',
   }[viewSize];
 
-  // List view uses horizontal layout
-  const isListView = viewSize === 'list';
+  // Purchased visual treatment classes
+  const purchased = item.isPurchased;
+  const showStrikethrough = purchased && viewSize !== 'small';
+  const cardBorderClass = purchased ? 'border-l-4 border-l-green-500' : '';
 
-  const CheckIcon = () => (
-    <svg
-      xmlns="http://www.w3.org/2000/svg"
-      className="h-3 w-3"
-      viewBox="0 0 20 20"
-      fill="currentColor"
+  const handleToggle = (e: React.MouseEvent) => {
+    e.stopPropagation();
+    onTogglePurchased?.(item.id, !item.isPurchased);
+  };
+
+  const PurchaseToggle = () => (
+    <button
+      onClick={handleToggle}
+      className="min-h-[44px] min-w-[44px] flex items-center justify-center -m-2 transition-colors"
+      aria-label={item.isPurchased ? 'Unmark as purchased' : 'Mark as purchased'}
     >
-      <path
-        fillRule="evenodd"
-        d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z"
-        clipRule="evenodd"
-      />
-    </svg>
+      {item.isPurchased ? (
+        <svg
+          xmlns="http://www.w3.org/2000/svg"
+          className={`${toggleIconSize} text-green-500`}
+          viewBox="0 0 24 24"
+          fill="currentColor"
+        >
+          <circle cx="12" cy="12" r="11" />
+          <path
+            d="M7.5 12.5l3 3 6-6"
+            stroke="white"
+            strokeWidth="2.5"
+            strokeLinecap="round"
+            strokeLinejoin="round"
+            fill="none"
+          />
+        </svg>
+      ) : (
+        <svg
+          xmlns="http://www.w3.org/2000/svg"
+          className={`${toggleIconSize} text-gray-400 hover:text-gray-500`}
+          viewBox="0 0 24 24"
+          fill="none"
+        >
+          <circle cx="12" cy="12" r="11" stroke="currentColor" strokeWidth="2" />
+        </svg>
+      )}
+    </button>
   );
 
+  const LinkButton = () => {
+    if (!item.url) return null;
+    return (
+      <a
+        href={item.url}
+        target="_blank"
+        rel="noopener noreferrer"
+        onClick={(e) => e.stopPropagation()}
+        className={`absolute ${linkButtonClasses} bg-blue-600 text-white rounded-full hover:bg-blue-700 transition-colors`}
+        aria-label="Open product page"
+      >
+        <svg
+          xmlns="http://www.w3.org/2000/svg"
+          className={linkIconClasses}
+          fill="none"
+          viewBox="0 0 24 24"
+          stroke="currentColor"
+        >
+          <path
+            strokeLinecap="round"
+            strokeLinejoin="round"
+            strokeWidth={2}
+            d="M10 6H6a2 2 0 00-2 2v10a2 2 0 002 2h10a2 2 0 002-2v-4M14 4h6m0 0v6m0-6L10 14"
+          />
+        </svg>
+      </a>
+    );
+  };
+
   // List view renders horizontal layout
-  if (isListView) {
+  if (viewSize === 'list') {
     return (
       <button
         onClick={onClick}
@@ -108,61 +166,85 @@ export function WishlistItem({ item, onClick, baseCurrency, viewSize = 'large' }
           overflow-hidden transition-all hover:shadow-md hover:border-gray-300
           focus:outline-none focus:ring-2 focus:ring-blue-500
           flex flex-row
-          ${item.isPurchased ? 'opacity-60' : ''}
+          ${cardBorderClass}
         `}
       >
         {/* Image - fixed 80x80 */}
-        <div className="relative w-[80px] h-[80px] flex-shrink-0">
+        <div className={`relative w-[80px] h-[80px] flex-shrink-0 ${purchased ? 'grayscale' : ''}`}>
           <ItemImage
             src={item.imageData}
             alt={item.name}
             className="w-[80px] h-[80px]"
           />
-          {item.isPurchased && (
-            <div className={`absolute ${purchasedBadgeClasses} bg-green-500 text-white rounded-full font-medium flex items-center gap-1`}>
-              <CheckIcon />
-            </div>
-          )}
-          {item.url && (
-            <a
-              href={item.url}
-              target="_blank"
-              rel="noopener noreferrer"
-              onClick={(e) => e.stopPropagation()}
-              className={`absolute ${linkButtonClasses} bg-blue-600 text-white rounded-full hover:bg-blue-700 transition-colors`}
-              aria-label="Open product page"
-            >
-              <svg
-                xmlns="http://www.w3.org/2000/svg"
-                className={linkIconClasses}
-                fill="none"
-                viewBox="0 0 24 24"
-                stroke="currentColor"
-              >
-                <path
-                  strokeLinecap="round"
-                  strokeLinejoin="round"
-                  strokeWidth={2}
-                  d="M10 6H6a2 2 0 00-2 2v10a2 2 0 002 2h10a2 2 0 002-2v-4M14 4h6m0 0v6m0-6L10 14"
-                />
-              </svg>
-            </a>
-          )}
+          <LinkButton />
         </div>
 
-        {/* Content - flex-1 to fill remaining space */}
-        <div className={`flex-1 ${contentPadding}`}>
-          <h3 className={nameClasses}>{item.name}</h3>
+        {/* Content */}
+        <div className={`flex-1 ${contentPadding} ${purchased ? 'opacity-60' : ''}`}>
+          <h3 className={`${nameClasses} ${showStrikethrough ? 'line-through text-gray-500' : ''}`}>
+            {item.name}
+          </h3>
           <span className={priceClasses}>
             {formatPrice(item.currentPrice, item.currency)}
           </span>
           <StarRating value={item.priority} readonly size={starSize} />
         </div>
+
+        {/* Toggle button - right end */}
+        {onTogglePurchased && (
+          <div className="flex items-center pr-2 flex-shrink-0">
+            <PurchaseToggle />
+          </div>
+        )}
       </button>
     );
   }
 
-  // Default grid layout for large/medium/small views
+  // Small view: toggle overlays on image
+  if (viewSize === 'small') {
+    return (
+      <button
+        onClick={onClick}
+        className={`
+          w-full text-left bg-white rounded-xl shadow-sm border border-gray-200
+          overflow-hidden transition-all hover:shadow-md hover:border-gray-300
+          focus:outline-none focus:ring-2 focus:ring-blue-500
+          ${cardBorderClass}
+        `}
+      >
+        {/* Image */}
+        <div className={`relative ${purchased ? 'grayscale' : ''}`}>
+          <ItemImage
+            src={item.imageData}
+            alt={item.name}
+            className={`w-full ${imageHeight}`}
+          />
+          <LinkButton />
+          {/* Toggle overlaid on image bottom-right for small view */}
+          {onTogglePurchased && (
+            <div className="absolute bottom-1 right-1">
+              <PurchaseToggle />
+            </div>
+          )}
+        </div>
+
+        {/* Content */}
+        <div className={contentPadding}>
+          <h3 className={nameClasses}>{item.name}</h3>
+          <div className={`flex items-baseline gap-1 flex-wrap`}>
+            <span className={priceClasses}>
+              {formatPrice(item.currentPrice, item.currency)}
+            </span>
+          </div>
+          <div className="flex items-center justify-between">
+            <StarRating value={item.priority} readonly size={starSize} />
+          </div>
+        </div>
+      </button>
+    );
+  }
+
+  // Default grid layout for large/medium views
   return (
     <button
       onClick={onClick}
@@ -170,61 +252,33 @@ export function WishlistItem({ item, onClick, baseCurrency, viewSize = 'large' }
         w-full text-left bg-white rounded-xl shadow-sm border border-gray-200
         overflow-hidden transition-all hover:shadow-md hover:border-gray-300
         focus:outline-none focus:ring-2 focus:ring-blue-500
-        ${item.isPurchased ? 'opacity-60' : ''}
+        ${cardBorderClass}
       `}
     >
       {/* Image */}
-      <div className="relative">
+      <div className={`relative ${purchased ? 'grayscale' : ''}`}>
         <ItemImage
           src={item.imageData}
           alt={item.name}
           className={`w-full ${imageHeight}`}
         />
-        {item.isPurchased && (
-          <div className={`absolute ${purchasedBadgeClasses} bg-green-500 text-white rounded-full font-medium flex items-center gap-1`}>
-            <CheckIcon />
-            {viewSize !== 'small' && 'Purchased'}
-          </div>
-        )}
         {!item.url && viewSize === 'large' && (
           <div className="absolute top-2 left-2 bg-gray-700 text-white px-2 py-1 rounded-full text-xs font-medium">
             Manual
           </div>
         )}
-        {item.url && (
-          <a
-            href={item.url}
-            target="_blank"
-            rel="noopener noreferrer"
-            onClick={(e) => e.stopPropagation()}
-            className={`absolute ${linkButtonClasses} bg-blue-600 text-white rounded-full hover:bg-blue-700 transition-colors`}
-            aria-label="Open product page"
-          >
-            <svg
-              xmlns="http://www.w3.org/2000/svg"
-              className={linkIconClasses}
-              fill="none"
-              viewBox="0 0 24 24"
-              stroke="currentColor"
-            >
-              <path
-                strokeLinecap="round"
-                strokeLinejoin="round"
-                strokeWidth={2}
-                d="M10 6H6a2 2 0 00-2 2v10a2 2 0 002 2h10a2 2 0 002-2v-4M14 4h6m0 0v6m0-6L10 14"
-              />
-            </svg>
-          </a>
-        )}
+        <LinkButton />
       </div>
 
       {/* Content */}
-      <div className={contentPadding}>
+      <div className={`${contentPadding} ${purchased ? 'opacity-60' : ''}`}>
         {/* Name */}
-        <h3 className={nameClasses}>{item.name}</h3>
+        <h3 className={`${nameClasses} ${showStrikethrough ? 'line-through text-gray-500' : ''}`}>
+          {item.name}
+        </h3>
 
         {/* Price */}
-        <div className={`flex items-baseline ${viewSize === 'small' ? 'gap-1' : 'gap-2'} flex-wrap`}>
+        <div className="flex items-baseline gap-2 flex-wrap">
           <span className={priceClasses}>
             {formatPrice(item.currentPrice, item.currency)}
           </span>
@@ -256,9 +310,10 @@ export function WishlistItem({ item, onClick, baseCurrency, viewSize = 'large' }
           </div>
         )}
 
-        {/* Priority */}
+        {/* Priority + Toggle */}
         <div className="flex items-center justify-between">
           <StarRating value={item.priority} readonly size={starSize} />
+          {onTogglePurchased && <PurchaseToggle />}
         </div>
 
         {/* Notes preview - only in large view */}
