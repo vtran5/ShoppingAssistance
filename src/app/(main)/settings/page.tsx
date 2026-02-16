@@ -11,6 +11,11 @@ export default function SettingsPage() {
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [success, setSuccess] = useState(false);
+  const [appOrigin, setAppOrigin] = useState<string | null>(null);
+
+  useEffect(() => {
+    setAppOrigin(window.location.origin);
+  }, []);
 
   // Fetch current settings
   useEffect(() => {
@@ -165,9 +170,7 @@ export default function SettingsPage() {
                 Add action:{' '}
                 <span className="font-medium">Open URL</span> and set it to:
                 <code className="block mt-1 px-2 py-1 bg-white rounded border border-gray-200 text-[11px] text-gray-800 break-all">
-                  {typeof window !== 'undefined'
-                    ? window.location.origin
-                    : 'https://your-app-url'}
+                  {appOrigin ?? 'https://your-app-url'}
                   /share?url=[Shortcut Input]
                 </code>
               </li>

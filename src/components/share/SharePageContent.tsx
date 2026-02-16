@@ -134,7 +134,8 @@ export function SharePageContent() {
       newErrors.name = 'Name is required';
     }
 
-    if (!currentPrice || parseFloat(currentPrice) <= 0) {
+    const price = parseFloat(currentPrice);
+    if (!currentPrice || isNaN(price) || price <= 0) {
       newErrors.currentPrice = 'Valid price is required';
     }
 
@@ -309,13 +310,14 @@ export function SharePageContent() {
           </div>
         )}
 
-        {/* Shared URL display */}
-        {productUrl && (
-          <div className="mb-4 p-3 bg-gray-100 rounded-lg">
-            <p className="text-xs text-gray-500 mb-1">Shared URL</p>
-            <p className="text-sm text-blue-600 truncate">{productUrl}</p>
-          </div>
-        )}
+        {/* Product URL */}
+        <Input
+          label="Product URL (optional)"
+          type="url"
+          value={productUrl ?? ''}
+          onChange={(val) => setProductUrl(val || null)}
+          placeholder="https://example.com/product"
+        />
 
         <form onSubmit={handleSave} className="space-y-4">
           {/* Image preview */}
