@@ -278,7 +278,7 @@ export function WishlistItem({ item, onClick, onTogglePurchased, baseCurrency, v
         </h3>
 
         {/* Price */}
-        <div className={`flex items-baseline ${viewSize === 'small' ? 'gap-1' : 'gap-2'} flex-wrap`}>
+        <div className="flex items-baseline gap-2 flex-wrap">
           <span className={priceClasses}>
             {formatPrice(item.currentPrice, item.currency)}
           </span>
